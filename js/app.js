@@ -17,7 +17,9 @@ const myDevices = {
 	CAMERA: {
 		name: null,
 		deviceId: null,
+		track: null,
 		stopped: false,
+		forceStopped: false,
 	},
 	AUDIO: {
 		name: null,
@@ -28,7 +30,20 @@ const myDevices = {
 		name: null,
 		deviceId: null,
 		stopped: false,
+		forceStopped: false,
 	},
+}
+const newCameraDevice = {
+	name: null,
+	deviceId: null,
+	track: null,
+	stopped: false
+};
+const newMicrophoneDevice = {
+	name: null,
+	deviceId: null,
+	track: null,
+	stopped: false
 }
 
 const SELECT_LIST = {
@@ -54,9 +69,10 @@ const SELECT_LIST = {
 	--> need to create session first. change server side
 
     * Functional Requirements
-    - Device Change such camera, speaker
+    - Device Change such camera (OK) / Microphone (OK)
     - Recording (Server OK. Only Front Need to be Updated)
-    - Turn off my Camera
+    - Turn off my Camera(Sometimes not) / Microphone (OK)
+	
 */
 
 function joinSession() {
@@ -179,6 +195,34 @@ function joinSession() {
 			console.warn('There was an error connecting to the session for screen share:', error.code, error.message);
 		}));
 	});
+
+	initializeMyDevices();
+}
+
+async function initializeMyDevices(){
+	let mediaStream = await new OpenVidu().getUserMedia({
+		audioSource: undefined,
+		videoSource: undefined
+	});
+
+	let ovTracks = mediaStream.getVideoTracks();
+
+	if(ovTracks && ovTracks.length > 0){
+		let cameraList = await navigator.mediaDevices.enumerateDevices();
+		cameraList = cameraList.filter(device => device.kind === 'videoinput');
+	
+		if(!cameraList || cameraList.length < 1){
+			return;
+		}
+	
+		myDevices.CAMERA.track = ovTracks[0];
+		myDevices.CAMERA.deviceId = cameraList[0].deviceId;
+		myDevices.CAMERA.name = cameraList[0].label;
+		myDevices.CAMERA.stopped = false;
+	}
+
+	console.log(myDevices);
+
 }
 
 // --- 9) Function to be called when the 'Screen share' button is clicked
@@ -332,72 +376,153 @@ function initMainVideo(videoElement, userData) {
 function showMediaDevices(){
 	let dialog = document.getElementById('section-media-devices');
 	if(isMediaDialogShown){
-		toggleCamera();
+		if(!myDevices.CAMERA.stopped){
+			myDevices.CAMERA.stopped = true;
+			toggleCamera();
+		}
+		if(!myDevices.MICROPHONE.stopped){
+			myDevices.MICROPHONE.stopped = true;
+			toggleMicrophone();
+		}
 		dialog.style.display = 'none';
 		isMediaDialogShown = false;
 		return;
 	}
 	toggleCamera(true);
+	toggleMicrophone(true);
 	dialog.style.display = 'block';
 	isMediaDialogShown = true;
 
 	setCameraDeviceList();
 	setMicrophoneDeviceList();
+	setMyCameraTrack();
 }
 
-/*
-async function setCameraDeviceList(){
-	if (!'mediaDevices' in navigator || !'getUserMedia' in navigator.mediaDevices) {
-		alert("There is no available media device.");
+async function setMyCameraTrack(){
+	if(myDevices.CAMERA.track){
 		return;
 	}
 
-	let cameras = await navigator.mediaDevices.getUserMedia({video: true});
-
-	console.log('camera: ', cameras);
-}
-*/
-
-async function toggleCamera(force){
-	if(force)	myDevices.CAMERA.stopped = false;
-	if(!myDevices.CAMERA.stopped){
-		let emptyTrack = createEmptyVideoTrack({width: 640, height: 480});
-		myPublisher.camera.replaceTrack(emptyTrack).then(() => {
-			console.log("New track has been published")
-		}).catch( (err) => {
-			alert("Fail to turn off the camera. Please try it later.");
-			return;
-		})
-		myDevices.CAMERA.stopped = true;
-		return;
-	}
-	
-	let mediaStream = await OVCamera.getUserMedia({
-		audioSource: undefined,
-		videoSource: undefined
+	let mediaStream = await navigator.mediaDevices.getUserMedia({
+		video: {
+			deviceId: {
+			  exact: myDevices.CAMERA.deviceId
+			}
+		}
 	});
+
 	let track = mediaStream.getVideoTracks();
+	
 	if(!track || track.length < 1){
 		alert("Fail to turn on the camera. Please check stauts of your camera.")
 		return;
 	}
-	myPublisher.camera.replaceTrack(track[0]).then(() => {
-		console.log("New track has been published");
-	}).catch( (err) => {
-		alert("Fail to turn on the camera. Please try it later.");
+
+	myDevices.CAMERA.track = track[0];
+}
+
+async function toggleCamera(force){
+	if(force){
+		let emptyTrack = createEmptyVideoTrack({width: 640, height: 480});
+		try{
+			let changed = await myPublisher.camera.replaceTrack(emptyTrack);
+			return;
+		} catch (e) {
+			console.error(e);
+			return;
+		}
+	}
+	if(!myDevices.CAMERA.stopped){
+		let emptyTrack = createEmptyVideoTrack({width: 640, height: 480});
+		try{
+			let changed = await myPublisher.camera.replaceTrack(emptyTrack);
+			console.log("Camera turned off")
+			myDevices.CAMERA.stopped = true;
+			return;
+		} catch (e) {
+			alert("Fail to turn off the camera. Please try it later.");
+			return;
+		}
+	}
+	
+	if(myDevices.CAMERA.stopped){
+		let mediaStream = await navigator.mediaDevices.getUserMedia({
+			video: {
+				deviceId: {
+				  exact: myDevices.CAMERA.deviceId
+				}
+			}
+		});
+	
+		let track = mediaStream.getVideoTracks();
+	
+		if(!track || track.length < 1){
+			alert("Fail to turn on the camera. Please check stauts of your camera.")
+			return;
+		}
+	
+		try{
+			let changed = await myPublisher.camera.replaceTrack(track[0]);	
+			console.log("Camera turned off");
+			myDevices.CAMERA.stopped = false;
+			return;	
+		} catch (e) {
+			alert("Fail to turn on the camera. Please try it later.");
+			return;
+		}
+	}
+}
+
+async function toggleMicrophone(force){
+	if(force)	{
+		try{
+			myPublisher.camera.publishAudio(false);
+			return;
+		} catch (e) {
+			console.log(e);
+			return;
+		}
+	}
+
+	if(!myDevices.MICROPHONE.stopped){
+		try{
+			myPublisher.camera.publishAudio(false);
+			console.log("Microphone turned off")
+			myDevices.MICROPHONE.stopped = true;
+			return;
+		} catch (e) {
+			alert("Fail to turn off the Microphone. Please try it later.");
+			console.log(e);
+			return;
+		}
+	}
+
+	try{
+		myPublisher.camera.publishAudio(true);
+		console.log("Camera turned off");
+		myDevices.MICROPHONE.stopped = false;
+		return;	
+	} catch (e) {
+		alert("Fail to turn on the Microphone. Please try it later.");
 		return;
-	});
-	myDevices.CAMERA.stopped = false;
+	}
+
+	console.log("What do you want??");
 }
 
 async function setCameraDeviceList(){
-	let mediaStream = await new OpenVidu().getUserMedia({
-		audioSource: undefined,
-		videoSource: undefined
-	});
+	let currentDevice;
+	if(!myDevices.CAMERA.name){
+		let mediaStream = await new OpenVidu().getUserMedia({
+			audioSource: undefined,
+			videoSource: undefined
+		});
 
-	let tracks = mediaStream.getVideoTracks();
-	let currentDevice = (tracks && tracks.length > 0 ? tracks[0].label : null);
+		let tracks = mediaStream.getVideoTracks();
+		currentDevice = (tracks && tracks.length > 0 ? tracks[0].label : null);
+	} else {
+		currentDevice = myDevices.CAMERA.name;
+	}
 	
 	/*
 	[
@@ -410,29 +535,13 @@ async function setCameraDeviceList(){
 	let videoDevices = devices.filter(i => i.kind === 'videoinput');
 
 	appendSelectList(videoDevices, currentDevice, SELECT_LIST.CAMERA);
-	showCameraPreview();
-	/*
-	if(videoDevices && videoDevices.length > 1){
-		var newPublisher = OVCamera.initPublisher('container-cameras', {
-			audioSource: undefined, // The source of audio. If undefined default microphone
-			videoSource: SELECTED_VIDEO, // The source of video. If undefined default webcam
-			publishAudio: true,  	// Whether you want to start publishing with your audio unmuted or not
-			publishVideo: true,  	// Whether you want to start publishing with your video enabled or not
-			resolution: '640x480',  // The resolution of your video
-			frameRate: 30,			// The frame rate of your video
-			insertMode: 'APPEND',	// How the video is inserted in the target element 'container-cameras'
-			mirror: false       	// Whether to mirror your local video or not
-		});
-
-
-	}
-	*/
+	onchangeCameraSelectList(true);
 }
 
-async function showCameraPreview(){
+async function onchangeCameraSelectList(justCalled){
 	let deviceSelect = document.getElementById('camera-select-list');
 	let selectValue = deviceSelect.options[deviceSelect.selectedIndex].value;
-
+	
 	let cameraList = await navigator.mediaDevices.enumerateDevices();//
 	cameraList = cameraList.filter(device => device.kind === 'videoinput' && device.label === selectValue);
 
@@ -441,6 +550,11 @@ async function showCameraPreview(){
 		return;
 	}
 	let previewer = document.getElementById('camera-preview');
+
+
+	newCameraDevice.deviceId = cameraList[0].deviceId;
+	newCameraDevice.name = cameraList[0].label;
+	newCameraDevice.stopped = false;
 
 	navigator.mediaDevices.getUserMedia({
 		video: {
@@ -458,12 +572,38 @@ async function showCameraPreview(){
 		},
 		err => console.error(err)
 	)
-	
-	console.log(cameraList);
 }
 
-async function changeCameraStream(stream){
-	
+async function changeCameraDevice(){
+	if(newCameraDevice.deviceId == myDevices.CAMERA.deviceId){
+		console.log('New camera is already being streamed in the meeting.')
+		return;
+	}
+
+	myDevices.CAMERA.deviceId = newCameraDevice.deviceId;
+	myDevices.CAMERA.name = newCameraDevice.name;
+
+	let mediaStream = await navigator.mediaDevices.getUserMedia({
+		video: {
+			deviceId: {
+			  exact: myDevices.CAMERA.deviceId
+			}
+		}
+	});
+
+	let videoTrack = mediaStream.getVideoTracks()[0];
+
+	/*
+	myPublisher.camera.replaceTrack(videoTrack).then(() => {
+		console.log("New track has been published")
+	}).catch( (err) => {
+		alert("Fail to turn off the camera. Please try it later.");
+		console.error(err);
+		return;
+	});
+	*/
+
+	myDevices.CAMERA.track = videoTrack;
 }
 
 async function setMicrophoneDeviceList(){
@@ -479,6 +619,54 @@ async function setMicrophoneDeviceList(){
 	let micDevices = devices.filter(i => i.kind === 'audioinput');
 
 	appendSelectList(micDevices, currentDevice, SELECT_LIST.MICROPHONE);
+}
+
+async function onchangeMicrophoneSelectList(justCalled){
+	let deviceSelect = document.getElementById('microphone-select-list');
+	let selectValue = deviceSelect.options[deviceSelect.selectedIndex].value;
+	
+	let micList = await navigator.mediaDevices.enumerateDevices();//
+	micList = micList.filter(device => device.kind === 'audioinput' && device.label === selectValue);
+
+	if(!micList || micList.length < 1){
+		alert(`Cannot find microphone device with name[${selectValue}]. Please check the device's status.`);
+		return;
+	}
+
+	newMicrophoneDevice.deviceId = micList[0].deviceId;
+	newMicrophoneDevice.name = micList[0].label;
+	newMicrophoneDevice.stopped = false;
+}
+
+async function changeMicrophoneDevice(){
+	if(newMicrophoneDevice.deviceId == myDevices.MICROPHONE.deviceId){
+		console.log('New microphone is already being streamed in the meeting.')
+		return;
+	}
+
+	myDevices.MICROPHONE.deviceId = newMicrophoneDevice.deviceId;
+	myDevices.MICROPHONE.name = newMicrophoneDevice.name;
+
+	console.log(myDevices.MICROPHONE);
+	let mediaStream = await navigator.mediaDevices.getUserMedia({
+		audio: {
+			deviceId: {
+			  exact: myDevices.MICROPHONE.deviceId
+			}
+		}
+	});
+
+	let audioTrack = mediaStream.getAudioTracks()[0];
+
+	myPublisher.camera.replaceTrack(audioTrack).then(() => {
+		console.log("New track has been published")
+	}).catch( (err) => {
+		alert("Fail to change audio input. Please try it later.");
+		console.error(err);
+		return;
+	});
+
+	myDevices.MICROPHONE.track = audioTrack;
 }
 
 async function setAudioDeviceList(){
@@ -596,7 +784,7 @@ function createToken(sessionId, isScreen) {
  */
 
 function createEmptyMediaStream(){
-	return new MediaStream([createEmptyAudioTrack(), createEmptyVideoTrack({width: 200, height: 200})]);
+	return new MediaStream([createEmptyAudioTrack(), createEmptyVideoTrack({width: 640, height: 480})]);
 }
 
 function createEmptyAudioTrack(){

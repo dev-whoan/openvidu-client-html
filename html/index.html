@@ -65,6 +65,7 @@
 				<input class="btn btn-large" type="button" id="buttonShowMediaDeviceList" onmouseup="showMediaDevices()" value="Devices">
 				<!-- Change Media Device-->
 				<input class="btn btn-large" type="button" id="buttonStopCamera" onmouseup="toggleCamera()" value="CamOff">
+				<input class="btn btn-large" type="button" id="buttonStopCamera" onmouseup="toggleMicrophone()" value="MicOff">
 			</div>
 			<div id="main-video" class="col-md-6"><p></p><video autoplay playsinline="true"></video></div>
 			<div class="col-md-6">
@@ -129,7 +130,7 @@
 				<video id="camera-preview" autoplay="" muted="" playsinline></video>
 			</div>
 			<div id="camera-list" class="section-media-device-list">
-				<select id="camera-select-list" onchange="showCameraPreview()">
+				<select id="camera-select-list" onchange="onchangeCameraSelectList(false)">
 					<!--
 					<option value="" selected></option>
 					-->
@@ -142,7 +143,7 @@
 				<p>Audio</p>
 			</div>
 			<div id="speaker-list" class="section-media-device-list">
-				<select id="speaker-select-list" onchange="changeSpeakerDevice()">
+				<select id="speaker-select-list" onchange="onchangeSpeakerDevice()">
 					<!--
 					<option value="" selected></option>
 					-->
@@ -155,7 +156,7 @@
 				<p>Microphone</p>
 			</div>
 			<div id="microphone-list" class="section-media-device-list">
-				<select id="microphone-select-list" onchange="changeMicrophoneDevice()">
+				<select id="microphone-select-list" onchange="onchangeMicrophoneSelectList(false)">
 					<!--
 					<option value="" selected></option>
 					-->
