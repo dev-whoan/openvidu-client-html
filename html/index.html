@@ -56,8 +56,15 @@
 		<div id="session" style="display: none;">
 			<div id="session-header">
 				<h1 id="session-title"></h1>
-				<input class="btn btn-large" type="button" id="buttonScreenShare" onmouseup="publishScreenShare()" value="Screen share" style="visibility: hidden;">
-				<input class="btn btn-large btn-danger" type="button" id="buttonLeaveSession" onmouseup="leaveSession()" value="Leave session">
+			</div>
+			<div id="session-menu">
+				<input class="btn btn-large btn-danger" type="button" id="buttonLeaveSession" onmouseup="leaveSession()" value="Leave">
+				<input class="btn btn-large" type="button" id="buttonScreenShare" onmouseup="publishScreenShare()" value="Share" style="display: none;">
+                <input class="btn btn-large" type="button" id="buttonStopScreenShare" onmouseup="unpublishScreenShare()" value="Stop" style="display: none;">
+				<!-- Change Media Device-->
+				<input class="btn btn-large" type="button" id="buttonShowMediaDeviceList" onmouseup="showMediaDevices()" value="Devices">
+				<!-- Change Media Device-->
+				<input class="btn btn-large" type="button" id="buttonStopCamera" onmouseup="toggleCamera()" value="CamOff">
 			</div>
 			<div id="main-video" class="col-md-6"><p></p><video autoplay playsinline="true"></video></div>
 			<div class="col-md-6">
@@ -72,6 +79,94 @@
 			</div>
 		</div>
 	</div>
+
+<style>
+#section-media-devices {
+	display: none;
+	position: fixed;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 2;
+	padding: 5px;
+	max-width: 600px;
+	width: 80%;
+	height: 75%;
+	overflow-y: scroll;
+	border: 1px solid black;
+	background-color: white;
+}
+
+#section-media-devices #camera-wrapper,
+#section-media-devices #speaker-wrapper,
+#section-media-devices #microphone-wrapper{
+	border: 1px solid green;
+}
+
+#camera-preview{
+	width: 350px;	/* cam: 320px */
+	height: 260px;	/* cam: 260px */
+}
+
+#section-media-devices #section-control{
+	overflow: hidden;
+	position: relative;
+}
+#section-media-devices #buttonCloseMediaDevices{
+	float: right;
+}
+</style>
+
+	<div id="section-media-devices">
+		<div id="section-control">
+			<input class="btn btn-large btn-danger" type="button" id="buttonCloseMediaDevices" onmouseup="showMediaDevices()" value="Close">
+		</div>
+		<div id="camera-wrapper" class="section-media-device-wrapper">
+			<div id="camera-label" class="section-media-device-label">
+				<p>Camera</p>
+			</div>
+			<div id="camera-preview-wrapper">
+				<video id="camera-preview" autoplay="" muted="" playsinline></video>
+			</div>
+			<div id="camera-list" class="section-media-device-list">
+				<select id="camera-select-list" onchange="showCameraPreview()">
+					<!--
+					<option value="" selected></option>
+					-->
+				</select>
+			</div>
+			<input class="btn btn-large" type="button" id="buttonSetCamera" onmouseup="changeCameraDevice()" value="Change">
+		</div>
+		<div id="speaker-wrapper" class="section-media-device-wrapper">
+			<div id="speaker-label" class="section-media-device-label">
+				<p>Audio</p>
+			</div>
+			<div id="speaker-list" class="section-media-device-list">
+				<select id="speaker-select-list" onchange="changeSpeakerDevice()">
+					<!--
+					<option value="" selected></option>
+					-->
+				</select>
+			</div>
+			<input class="btn btn-large" type="button" id="buttonSetAudio" onmouseup="changeAudioDevice()" value="Change">
+		</div>
+		<div id="microphone-wrapper" class="section-media-device-wrapper">
+			<div id="microphone-label" class="section-media-device-label">
+				<p>Microphone</p>
+			</div>
+			<div id="microphone-list" class="section-media-device-list">
+				<select id="microphone-select-list" onchange="changeMicrophoneDevice()">
+					<!--
+					<option value="" selected></option>
+					-->
+				</select>
+			</div>
+			<input class="btn btn-large" type="button" id="buttonSetMicrophone" onmouseup="changeMicrophoneDevice()" value="Change">
+		</div>
+	</div>
+<script>
+//	showMediaDevices();
+</script>
 
 	<footer class="footer">
 		<div class="container">

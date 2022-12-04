@@ -6,8 +6,58 @@ var sessionScreen;
 var myUserName;
 var mySessionId;
 var screensharing = false;
+var isMediaDialogShown = false;
+
+var myPublisher = {
+    camera: null,
+    screen: null,
+}
+
+const myDevices = {
+	CAMERA: {
+		name: null,
+		deviceId: null,
+		stopped: false,
+	},
+	AUDIO: {
+		name: null,
+		deviceId: null,
+		stopped: false,
+	},
+	MICROPHONE: {
+		name: null,
+		deviceId: null,
+		stopped: false,
+	},
+}
+
+const SELECT_LIST = {
+	CAMERA: "CAMERA",
+	AUDIO: "AUDIO",
+	MICROPHONE: "MICROPHONE"
+}
 
 /* OPENVIDU METHODS */
+
+/*
+    Reason why camera doesn't appear
+    1. User are connecting with same id to both session; camera, screen.
+    2. When user connected, if screen entered first, then there is nothing to stream. Because screen is streaming nothing.
+        3. So, must join camera first, and then, let screen connect.
+        3. Or, use different id between camera and screen.
+
+    --> OK !
+
+    * Current Issue
+    When user disconnect since screen sharing, server be dead.
+	--> This is because when all the clients disconnect from server, they don't check about information once more.
+	--> need to create session first. change server side
+
+    * Functional Requirements
+    - Device Change such camera, speaker
+    - Recording (Server OK. Only Front Need to be Updated)
+    - Turn off my Camera
+*/
 
 function joinSession() {
 
@@ -30,9 +80,11 @@ function joinSession() {
 
 	// ------- 3.1) Handle subscribers of 'CAMERA' type
 	sessionCamera.on('streamCreated', event => {
+        console.log("stream created::", event);
 		if (event.stream.typeOfVideo == "CAMERA") {
 			// Subscribe to the Stream to receive it. HTML video will be appended to element with 'container-cameras' id
 			var subscriber = sessionCamera.subscribe(event.stream, 'container-cameras');
+            console.log("subscriber: ", subscriber);
 			// When the HTML video has been appended to DOM...
 			subscriber.on('videoElementCreated', event => {
 				// Add a new <p> element for the user's nickname just below its video
@@ -42,6 +94,7 @@ function joinSession() {
 	});
 
     // ------- 3.2) Handle subscribers of 'Screen' type
+    
     sessionScreen.on('streamCreated', event => {
 		if (event.stream.typeOfVideo == "SCREEN") {
 			// Subscribe to the Stream to receive it. HTML video will be appended to element with 'container-screens' id
@@ -71,14 +124,12 @@ function joinSession() {
 
 	// --- 4.1) Get the token for the 'sessionCamera' object
 	getToken(mySessionId, false).then(token => {
-
+        console.log("camera token", token);
 		// First param is the token got from the OpenVidu deployment. Second param can be retrieved by every user on event
 		// 'streamCreated' (property Stream.connection.data), and will be appended to DOM as the user's nickname
 		sessionCamera.connect(token, { clientData: myUserName })
 			.then(() => {
-
 				// --- 5) Set page layout for active call ---
-
 				document.getElementById('session-title').innerText = mySessionId;
 				document.getElementById('join').style.display = 'none';
 				document.getElementById('session').style.display = 'block';
@@ -108,6 +159,7 @@ function joinSession() {
 				// --- 8) Publish your stream ---
 
 				sessionCamera.publish(publisher);
+                myPublisher.camera = publisher;
 
 			})
 			.catch(error => {
@@ -116,14 +168,16 @@ function joinSession() {
 	});
 
     // --- 4.2) Get the token for the 'sessionScreen' object
+    
 	getToken(mySessionId, true).then((tokenScreen) => {
 		// Create a token for screen share
-		sessionScreen.connect(tokenScreen, { clientData: myUserName }).then(() => {
-			document.getElementById('buttonScreenShare').style.visibility = 'visible';
+        console.log('screen token', tokenScreen);
+		sessionScreen.connect(tokenScreen, { clientData: `${myUserName}-screen` }).then(() => {
+			document.getElementById('buttonScreenShare').style.display = 'block';
 			console.log("Session screen connected");
 		}).catch((error => {
 			console.warn('There was an error connecting to the session for screen share:', error.code, error.message);
-		}));;
+		}));
 	});
 }
 
@@ -131,29 +185,42 @@ function joinSession() {
 function publishScreenShare() {
 	// --- 9.1) To create a publisherScreen set the property 'videoSource' to 'screen'
 	var publisherScreen = OVScreen.initPublisher("container-screens", { videoSource: "screen" });
+    myPublisher.screen = publisherScreen;
 
 	// --- 9.2) Publish the screen share stream only after the user grants permission to the browser
-	publisherScreen.once('accessAllowed', (event) => {
-		document.getElementById('buttonScreenShare').style.visibility = 'hidden';
-		screensharing = true;
-		// If the user closes the shared window or stops sharing it, unpublish the stream
-		publisherScreen.stream.getMediaStream().getVideoTracks()[0].addEventListener('ended', () => {
-			console.log('User pressed the "Stop sharing" button');
-			sessionScreen.unpublish(publisherScreen);
-			document.getElementById('buttonScreenShare').style.visibility = 'visible';
-			screensharing = false;
-		});
-		sessionScreen.publish(publisherScreen);
-	});
+    publisherScreen.once('accessAllowed', (event) => {
+        document.getElementById('buttonScreenShare').style.display = 'none';
+        document.getElementById('buttonStopScreenShare').style.display = 'inline-block';
+        screensharing = true;
+        // If the user closes the shared window or stops sharing it, unpublish the stream
+        publisherScreen.stream.getMediaStream().getVideoTracks()[0].addEventListener('ended', () => {
+            console.log('User pressed the "Stop sharing" button');
+            sessionScreen.unpublish(publisherScreen);
+            document.getElementById('buttonScreenShare').style.display = 'block';
+            document.getElementById('buttonStopScreenShare').style.display = 'none';
+            screensharing = false;
+        });
+        sessionScreen.publish(publisherScreen);
+    });
 
-	publisherScreen.on('videoElementCreated', function (event) {
-		appendUserData(event.element, sessionScreen.connection);
-		event.element['muted'] = true;
-	});
+    publisherScreen.on('videoElementCreated', function (event) {
+        appendUserData(event.element, sessionScreen.connection);
+        event.element['muted'] = true;
+    });
 
-	publisherScreen.once('accessDenied', (event) => {
-		console.error('Screen Share: Access Denied');
-	});
+    publisherScreen.once('accessDenied', (event) => {
+        console.log("화면 공유화 권한이 없습니다. 현재 실행중인 브라우저에 화면 공유 권한을 설정해 주세요.");
+        console.error('Screen Share: Access Denied');
+    });
+}
+
+function unpublishScreenShare(){
+    if(!screensharing){ return; }
+    
+    sessionScreen.unpublish(myPublisher.screen);
+    document.getElementById('buttonScreenShare').style.display = 'block';
+    document.getElementById('buttonStopScreenShare').style.display = 'none';
+    screensharing = false;
 }
 
 function leaveSession() {
@@ -169,7 +236,8 @@ function leaveSession() {
 	document.getElementById('join').style.display = 'block';
 	document.getElementById('session').style.display = 'none';
 	// Restore default screensharing value to false
-	screensharing = false;;
+	screensharing = false;
+	location.reload();
 }
 
 window.onbeforeunload = function () {
@@ -202,11 +270,13 @@ function appendUserData(videoElement, connection) {
         for(let i = 0; i < connectionData.length; i++){
             if(!connectionData[i].includes("clientData"))   continue;
             let json = JSON.parse(connectionData[i]);
+			console.log(connectionData)
             if(json.clientData){
                 userData = json.clientData;
                 break;
             }
         }
+        console.log("userData:: ", userData);
 //		userData = JSON.parse(connection.data).clientData;
 		nodeId = connection.connectionId;
 	}
@@ -251,6 +321,214 @@ function initMainVideo(videoElement, userData) {
 	document.querySelector('#main-video video')['muted'] = true;
 }
 
+/**
+ * --------------------------------------------
+ * CHANGING MEDIA DEVICE: CAMERA, SPEAKER
+ * --------------------------------------------
+ * The methods below allow client to change media devices.
+ * To turn on or off, 
+ */
+
+function showMediaDevices(){
+	let dialog = document.getElementById('section-media-devices');
+	if(isMediaDialogShown){
+		toggleCamera();
+		dialog.style.display = 'none';
+		isMediaDialogShown = false;
+		return;
+	}
+	toggleCamera(true);
+	dialog.style.display = 'block';
+	isMediaDialogShown = true;
+
+	setCameraDeviceList();
+	setMicrophoneDeviceList();
+}
+
+/*
+async function setCameraDeviceList(){
+	if (!'mediaDevices' in navigator || !'getUserMedia' in navigator.mediaDevices) {
+		alert("There is no available media device.");
+		return;
+	}
+
+	let cameras = await navigator.mediaDevices.getUserMedia({video: true});
+
+	console.log('camera: ', cameras);
+}
+*/
+
+async function toggleCamera(force){
+	if(force)	myDevices.CAMERA.stopped = false;
+	if(!myDevices.CAMERA.stopped){
+		let emptyTrack = createEmptyVideoTrack({width: 640, height: 480});
+		myPublisher.camera.replaceTrack(emptyTrack).then(() => {
+			console.log("New track has been published")
+		}).catch( (err) => {
+			alert("Fail to turn off the camera. Please try it later.");
+			return;
+		})
+		myDevices.CAMERA.stopped = true;
+		return;
+	}
+	
+	let mediaStream = await OVCamera.getUserMedia({
+		audioSource: undefined,
+		videoSource: undefined
+	});
+	let track = mediaStream.getVideoTracks();
+	if(!track || track.length < 1){
+		alert("Fail to turn on the camera. Please check stauts of your camera.")
+		return;
+	}
+	myPublisher.camera.replaceTrack(track[0]).then(() => {
+		console.log("New track has been published");
+	}).catch( (err) => {
+		alert("Fail to turn on the camera. Please try it later.");
+		return;
+	});
+	myDevices.CAMERA.stopped = false;
+}
+
+async function setCameraDeviceList(){
+	let mediaStream = await new OpenVidu().getUserMedia({
+		audioSource: undefined,
+		videoSource: undefined
+	});
+
+	let tracks = mediaStream.getVideoTracks();
+	let currentDevice = (tracks && tracks.length > 0 ? tracks[0].label : null);
+	
+	/*
+	[
+		{kind: 'audioinput', deviceId: 'default', label: 'ㄱ기본값 - 마크(USB Microphone) (0c45:6340)'},
+		{kind: 'videoinput', deviceId: 'HASH_VALUE', label: 'WEbcam C170 (046d:082b)'},
+		...
+	]
+	*/
+	let devices = await new OpenVidu().getDevices();
+	let videoDevices = devices.filter(i => i.kind === 'videoinput');
+
+	appendSelectList(videoDevices, currentDevice, SELECT_LIST.CAMERA);
+	showCameraPreview();
+	/*
+	if(videoDevices && videoDevices.length > 1){
+		var newPublisher = OVCamera.initPublisher('container-cameras', {
+			audioSource: undefined, // The source of audio. If undefined default microphone
+			videoSource: SELECTED_VIDEO, // The source of video. If undefined default webcam
+			publishAudio: true,  	// Whether you want to start publishing with your audio unmuted or not
+			publishVideo: true,  	// Whether you want to start publishing with your video enabled or not
+			resolution: '640x480',  // The resolution of your video
+			frameRate: 30,			// The frame rate of your video
+			insertMode: 'APPEND',	// How the video is inserted in the target element 'container-cameras'
+			mirror: false       	// Whether to mirror your local video or not
+		});
+
+
+	}
+	*/
+}
+
+async function showCameraPreview(){
+	let deviceSelect = document.getElementById('camera-select-list');
+	let selectValue = deviceSelect.options[deviceSelect.selectedIndex].value;
+
+	let cameraList = await navigator.mediaDevices.enumerateDevices();//
+	cameraList = cameraList.filter(device => device.kind === 'videoinput' && device.label === selectValue);
+
+	if(!cameraList || cameraList.length < 1){
+		alert(`Cannot find camera device with name[${selectValue}]. Please check the device's status.`);
+		return;
+	}
+	let previewer = document.getElementById('camera-preview');
+
+	navigator.mediaDevices.getUserMedia({
+		video: {
+			deviceId: {
+			  exact: cameraList[0].deviceId
+			}
+		}
+	}).then(
+		(stream) => {
+			console.log(stream);
+			previewer.srcObject = stream;
+			previewer.addEventListener('canplaythrough', () => {
+				previewer.play();
+			});
+		},
+		err => console.error(err)
+	)
+	
+	console.log(cameraList);
+}
+
+async function changeCameraStream(stream){
+	
+}
+
+async function setMicrophoneDeviceList(){
+	let mediaStream = await new OpenVidu().getUserMedia({
+		audioSource: undefined,
+		videoSource: undefined
+	});
+
+	let tracks = mediaStream.getAudioTracks();
+	let currentDevice = (tracks && tracks.length > 0 ? tracks[0].label : null);
+
+	let devices = await new OpenVidu().getDevices();
+	let micDevices = devices.filter(i => i.kind === 'audioinput');
+
+	appendSelectList(micDevices, currentDevice, SELECT_LIST.MICROPHONE);
+}
+
+async function setAudioDeviceList(){
+	let mediaStream = await new OpenVidu().getUserMedia({
+		audioSource: undefined,
+		videoSource: undefined
+	});
+
+	let tracks = mediaStream.getAudioTracks();
+	let currentDevice = (tracks && tracks.length > 0 ? tracks[0].label : null);
+
+	let devices = await new OpenVidu().getDevices();
+	let micDevices = devices.filter(i => i.kind === 'audiooutput');
+
+	appendSelectList(micDevices, currentDevice, SELECT_LIST.MICROPHONE);
+}
+
+function appendSelectList(list, currentDevice, type){
+	let parent;
+	switch(type){
+		case SELECT_LIST.CAMERA:
+			parent = document.getElementById('camera-select-list');
+			break;
+		case SELECT_LIST.MICROPHONE:
+			parent = document.getElementById('microphone-select-list');
+			break;
+		default:
+			parent = document.getElementById('speaker-select-list');
+	}
+
+	if(!parent)	return;
+
+	parent.innerHTML = '';
+
+	list.forEach((device, index) => {
+		let name = device.label;
+		let deviceId = device.deviceId;
+		let option = document.createElement('option');
+		option.value = name;
+		option.innerText = name;
+		if(name === currentDevice) {
+			option.selected = true;
+			console.log(myDevices, type);
+			console.log(myDevices[type]);
+			myDevices[type].name = name;
+			myDevices[type].deviceId = deviceId;
+		}
+		parent.append(option);
+	});
+}
 
 /**
  * --------------------------------------------
@@ -273,27 +551,21 @@ let APPLICATION_SERVER_URL = '/'
 async function getToken(mySessionId, isScreen) {
     let sessionInfo = await createSession(mySessionId, isScreen);
     let token = await createToken(mySessionId, isScreen);
-    if(isScreen){
-        console.log("get==> screen token: " + token);
-    } else {
-        console.log("get==> camera token: " + token);
-    }
     return token;
 //	return createSession(mySessionId).then(sessionId => createToken(sessionId));
 }
 
 function createSession(customSessionId, isScreen) {
-    if(isScreen){
-        console.log("Create==> screen session: " + customSessionId);
-    } else {
-        console.log("Create==> camera session: " + customSessionId);
-    }
-    
+	let _myUserName = (!isScreen) ?
+         document.getElementById("userName").value // camera session
+    :    document.getElementById("userName").value + '-screen' // screen session
+    ;
+
     return new Promise((resolve, reject) => {
         $.ajax({
             type: "POST",
             url: APPLICATION_SERVER_URL + "sessions",
-            data: JSON.stringify({ sessionId: customSessionId, screenSession: isScreen }),
+            data: JSON.stringify({ sessionId: customSessionId, nickname: _myUserName, screenSession: isScreen }),
             headers: { "Content-Type": "application/json" },
             success: response => resolve(response), // The sessionId
             error: (error) => reject(error)
@@ -302,20 +574,46 @@ function createSession(customSessionId, isScreen) {
 }
 
 function createToken(sessionId, isScreen) {
-    if(isScreen){
-        console.log("Create==> screen token: " + sessionId);
-    } else {
-        console.log("Create==> camera token: " + sessionId);
-    }
-    let myUserName = document.getElementById("userName").value;
+    let _myUserName = (!isScreen) ?
+         document.getElementById("userName").value // camera session
+    :    document.getElementById("userName").value + '-screen' // screen session
+    ;
     return new Promise((resolve, reject) => {
         $.ajax({
             type: 'POST', 
-            url: APPLICATION_SERVER_URL + 'sessions/connection',
-            data: JSON.stringify({ nickname: myUserName, sessionId: sessionId, screenSession: isScreen }), // The sessionId and userNickname
+			url: `${APPLICATION_SERVER_URL}sessions/${sessionId}/connection`,
+//            url: APPLICATION_SERVER_URL + 'sessions/connection',
+            data: JSON.stringify({ nickname: _myUserName, sessionId: sessionId, screenSession: isScreen }), // The sessionId and userNickname
             headers: { "Content-Type": "application/json" },
             success: (response) => resolve(response), // The token
-            error: (error) => reject(error)
+            error: (error) => reject(error) 
         });
     });
+}
+
+/**
+ * Create Empty Media
+ */
+
+function createEmptyMediaStream(){
+	return new MediaStream([createEmptyAudioTrack(), createEmptyVideoTrack({width: 200, height: 200})]);
+}
+
+function createEmptyAudioTrack(){
+	const ctx = new AudioContext();
+	const oscillator = ctx.createOscillator();
+	const dst = oscillator.connect(ctx.createMediaStreamDestination());
+	oscillator.start();
+	const track = dst.stream.getAudioTracks()[0];
+	return Object.assign(track, { enabled: false });
+}
+
+function createEmptyVideoTrack({width, height}){
+	const canvas = Object.assign(document.createElement('canvas'), { width, height});
+	canvas.getContext('2d').fillRect(0, 0, width, height);
+
+	const stream = canvas.captureStream();
+	const track = stream.getVideoTracks()[0];
+
+	return Object.assign(track, { enabled: false });
 }
