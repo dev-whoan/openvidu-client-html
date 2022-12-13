@@ -97,18 +97,22 @@
                 <h1 id="session-title"></h1>
             </div>
 			<div id="session-menu">
-				<input class="btn btn-large btn-danger" type="button" id="buttonLeaveSession" onmouseup="leaveSession()" value="Leave">
-				<input class="btn btn-large" type="button" id="buttonScreenShare" onmouseup="publishScreenShare()" value="Share" style="display: none;">
-                <input class="btn btn-large" type="button" id="buttonStopScreenShare" onmouseup="unpublishScreenShare()" value="Stop" style="display: none;">
-				<!-- Change Media Device -->
-				<input class="btn btn-large" type="button" id="buttonShowMediaDeviceList" onmouseup="showMediaDevices()" value="Devices">
-				<!-- Change Media Device -->
-				<input class="btn btn-large" type="button" id="buttonStopCamera" onmouseup="toggleCamera()" value="CamOff">
-				<input class="btn btn-large" type="button" id="buttonStopMicrophone" onmouseup="toggleMicrophone()" value="MicOff">
+				<input class="btn btn-large btn-danger" style="margin-bottom: 25px;" type="button" id="buttonLeaveSession" onmouseup="leaveSession()" value="Leave">
+                <img class="setting-icon" id="buttonScreenShare" onmouseup="publishScreenShare()" src="/resource/img/toolbar/screen_share_on.png" />
+                <img class="setting-icon" id="buttonShowMediaDeviceList" onmouseup="showMediaDevices()" src="/resource/img/toolbar/setting.png" />
+                <img class="setting-icon" id="buttonStopCamera" onmouseup="toggleCamera()" src="/resource/img/toolbar/camera_on.png" />
+                <img class="setting-icon" id="buttonStopMicrophone" onmouseup="toggleMicrophone()" src="/resource/img/toolbar/mic_on.png"/>
 			</div>
 <!-- Desktop -->
 <style>
 @media only screen and (min-width: 992px) {
+
+
+    #session-menu .setting-icon{
+        width: 34px !important;
+        height: 34px !important;
+        cursor: pointer;
+    }
 
 #session-header {
     padding: 0 20px 0 20px;
@@ -354,15 +358,7 @@ iPhone 13 Pro Included here
 </style>
 <!-- Medium Mobile ( under width 991px )-->
             <div id="video-row-holder">
-                <div class="camera-grid-holder" id="camera-holder">
-                    <!--
-                        <div class="panel-body" id="container-cameras" ></div>
-                    <div class="row panel panel-default">
-                        <div class="panel-heading">User Screens</div>
-                        <div class="panel-body" id="container-screens" ></div>
-                    </div>
-                    -->
-                </div>
+                <div class="camera-grid-holder" id="camera-holder"></div>
                 <div id="main-video" class="col-md-6">
                     <p></p><video autoplay playsinline="true"></video>
                 </div>
@@ -455,11 +451,7 @@ iPhone 13 Pro Included here
                 <video id="camera-preview" autoplay="" muted="" playsinline></video>
             </div>
             <div id="camera-list" class="section-media-device-list">
-                <select id="camera-select-list" onchange="onchangeCameraSelectList(false)">
-                    <!--
-					<option value="" selected></option>
-					-->
-                </select>
+                <select id="camera-select-list" onchange="onchangeCameraSelectList(false)"></select>
             </div>
             <input class="btn btn-large" type="button" id="buttonInitCameraOff" onmouseup="initCameraOff()" value="Off">
             <input class="btn btn-large" type="button" id="buttonSetCamera" onmouseup="changeCameraDevice()"
@@ -485,11 +477,7 @@ iPhone 13 Pro Included here
                 <p>Microphone</p>
             </div>
             <div id="microphone-list" class="section-media-device-list">
-                <select id="microphone-select-list" onchange="onchangeMicrophoneSelectList(false)">
-                    <!--
-					<option value="" selected></option>
-					-->
-                </select>
+                <select id="microphone-select-list" onchange="onchangeMicrophoneSelectList(false)"></select>
             </div>
             <input class="btn btn-large" type="button" id="buttonInitMicOff" onmouseup="initMicrophoneOff()"
                 value="Off">
@@ -497,9 +485,6 @@ iPhone 13 Pro Included here
                 value="Change">
         </div>
     </div>
-    <script>
-//	showMediaDevices();
-    </script>
 
     <footer class="footer">
         <div class="container">

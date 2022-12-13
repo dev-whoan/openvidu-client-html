@@ -158,22 +158,6 @@ a:hover .demo-logo {
 	margin-top: 15px;
 }
 
-#buttonLeaveSession {
-	float: right;
-	/*
-    margin-top: 20px;
-    margin-left: 15px;
-    */
-}
-
-#buttonScreenShare {
-	float: right;
-	/*
-    margin-top: 20px;
-    margin-left: 15px;
-    */
-}
-
 #container-screens video {
 	position: relative;
 	float: left;
@@ -236,27 +220,11 @@ video {
 
 #session-menu{
     width: 100%;
-    display: flex;
+    overflow: hidden;
     height: 34px;
     margin-bottom: 20px;
     flex-direction: row;
     justify-content: space-between;
-}
-
-#buttonShowMediaDeviceList{
-    float: right;
-    /*
-    margin-top: 20px;
-    margin-left: 15px;
-    */
-}
-
-#buttonStopScreenShare{
-    float: right;
-    /*
-    margin-top: 20px;
-    margin-left: 15px;
-    */
 }
 
 /* xs ans md screen resolutions*/

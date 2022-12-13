@@ -29,6 +29,25 @@ var connectedToSession = false;
         - 
 */
 
+var TOOLBAR_ICON = {
+    screen: {
+        on: '/resource/img/toolbar/screen_share_on.png',
+        off: '/resource/img/toolbar/screen_share_off.png'
+    },
+    camera: {
+        on: '/resource/img/toolbar/camera_on.png',
+        off: '/resource/img/toolbar/camera_off.png'
+    },
+    mic: {
+        on: '/resource/img/toolbar/mic_on.png',
+        off: '/resource/img/toolbar/mic_off.png'
+    },
+    setting: '/resource/img/toolbar/setting.png',
+    recording: {
+        download: '/resource/img/toolbar/video_save.png'
+    }
+}
+
 var myPublisher = {
     camera: null,
     screen: null,
@@ -388,7 +407,8 @@ function joinSession() {
 		// Create a token for screen share
         console.log('screen token', tokenScreen);
 		sessionScreen.connect(tokenScreen, { clientData: `${myUserName}-screen` }).then(() => {
-			document.getElementById('buttonScreenShare').style.display = 'block';
+//			document.getElementById('buttonScreenShare').style.display = 'block';
+            document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.on;
 			console.log("Session screen connected");
 		}).catch((error => {
 			console.warn('There was an error connecting to the session for screen share:', error.code, error.message);
@@ -427,15 +447,17 @@ function publishScreenShare() {
 
 	// --- 9.2) Publish the screen share stream only after the user grants permission to the browser
     publisherScreen.once('accessAllowed', (event) => {
-        document.getElementById('buttonScreenShare').style.display = 'none';
-        document.getElementById('buttonStopScreenShare').style.display = 'inline-block';
+//        document.getElementById('buttonScreenShare').style.display = 'none';
+//        document.getElementById('buttonStopScreenShare').style.display = 'inline-block';
+        document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.off;
         screensharing = true;
         // If the user closes the shared window or stops sharing it, unpublish the stream
         publisherScreen.stream.getMediaStream().getVideoTracks()[0].addEventListener('ended', () => {
             console.log('User pressed the "Stop sharing" button');
             sessionScreen.unpublish(publisherScreen);
-            document.getElementById('buttonScreenShare').style.display = 'block';
-            document.getElementById('buttonStopScreenShare').style.display = 'none';
+//            document.getElementById('buttonScreenShare').style.display = 'block';
+//            document.getElementById('buttonStopScreenShare').style.display = 'none';
+            document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.on;
             screensharing = false;
         });
         sessionScreen.publish(publisherScreen);
@@ -456,8 +478,9 @@ function unpublishScreenShare(){
     if(!screensharing){ return; }
     
     sessionScreen.unpublish(myPublisher.screen);
-    document.getElementById('buttonScreenShare').style.display = 'block';
-    document.getElementById('buttonStopScreenShare').style.display = 'none';
+//    document.getElementById('buttonScreenShare').style.display = 'block';
+//    document.getElementById('buttonStopScreenShare').style.display = 'none';
+    document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.on;
     screensharing = false;
 }
 
@@ -642,6 +665,7 @@ async function toggleCamera(force){
 			let changed = await myPublisher.camera.replaceTrack(emptyTrack);
 			console.log("Camera turned off")
 			myDevices.CAMERA.stopped = true;
+            document.getElementById('buttonStopCamera').src = TOOLBAR_ICON.camera.off;
 			return;
 		} catch (e) {
 			alert("Fail to turn off the camera. Please try it later.");
@@ -669,6 +693,7 @@ async function toggleCamera(force){
 			let changed = await myPublisher.camera.replaceTrack(track[0]);	
 			console.log("Camera turned off");
 			myDevices.CAMERA.stopped = false;
+            document.getElementById('buttonStopCamera').src = TOOLBAR_ICON.camera.on;
 			return;	
 		} catch (e) {
 			alert("Fail to turn on the camera. Please try it later.");
@@ -691,8 +716,8 @@ async function toggleMicrophone(force){
 	if(!myDevices.MICROPHONE.stopped){
 		try{
 			myPublisher.camera.publishAudio(false);
-			console.log("Microphone turned off")
 			myDevices.MICROPHONE.stopped = true;
+            document.getElementById('buttonStopMicrophone').src = TOOLBAR_ICON.mic.off;
 			return;
 		} catch (e) {
 			alert("Fail to turn off the Microphone. Please try it later.");
@@ -703,8 +728,8 @@ async function toggleMicrophone(force){
 
 	try{
 		myPublisher.camera.publishAudio(true);
-		console.log("Camera turned off");
 		myDevices.MICROPHONE.stopped = false;
+        document.getElementById('buttonStopMicrophone').src = TOOLBAR_ICON.mic.on;
 		return;	
 	} catch (e) {
 		alert("Fail to turn on the Microphone. Please try it later.");
