@@ -9,26 +9,6 @@ var screensharing = false;
 var isMediaDialogShown = false;
 var connectedToSession = false;
 
-/*
-    * To Do List
-    - If user have no media device, display it in prepare session
-    - 
-
-    * Current Issue
-    User can join without camera, But people subscribe the user in a white box not a black.
-    
-
-    * Functional Requirements
-    - Device Change such camera (OK) / Microphone (OK)
-    - Turn off my Camera(Sometimes not) / Microphone (OK)
-    - Speaker Mode']
-		https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/selectAudioOutput
-    - Recording (Server OK. Only Front Need to be Updated)
-        - Recording must stop when session is empty ===> Already implemented in OpenVidu Server (OK)
-        - If new user accessed, they must know whether the session is on recording or not
-        - 
-*/
-
 var myPublisher = {
     camera: null,
     screen: null,
@@ -128,43 +108,26 @@ function initMicrophoneOff(){
 
 async function initializeVideoDevice(){
     try{
-        let devices = await navigator.mediaDevices.enumerateDevices();
-        devices = devices.filter(device => device.kind === 'videoinput');
-        console.log('cameras:', devices, devices.length);
-        if(devices && devices.length > 0){
-            appendSelectList(devices, devices[0].label, SELECT_LIST.CAMERA);
+        let cameraList = await navigator.mediaDevices.getUserMedia({video: true});
+        console.log(cameraList);
+        if(cameraList && cameraList.getVideoTracks() && cameraList.getVideoTracks().length > 0){
+            let videoDevices = cameraList ? cameraList.getVideoTracks() : null;
+        
+            console.log(videoDevices[0]);
+            appendSelectList(videoDevices, null, SELECT_LIST.CAMERA);
             onchangeCameraSelectList(true);
-            myDevices.CAMERA.deviceId = devices[0].deviceId;
-            myDevices.CAMERA.name = devices[0].label;
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    exact: {
-                        deviceId: myDevices.CAMERA.deviceId
-                    }
-                }
-            }).then( (mediaStream) => {
-                myDevices.CAMERA.track = mediaStream.getVideoTracks();
-                console.log('myDevices:', myDevices);
-            });
 
             return;
         }
-        console.warn("No camera device found");
         initSetting.NO_CAMERA_DEVICE = true;
-        myDevices.CAMERA.deviceId = virtualCameraForBlackScreen.deviceId;
-        myDevices.CAMERA.track = virtualCameraForBlackScreen.track;
-        myDevices.CAMERA.name = virtualCameraForBlackScreen.label;
-        
-        document.getElementById('buttonStopCamera').disabled = true;
+        myDevices.CAMERA.track = virtualCameraForBlackScreen.track
         return;
     } catch (e) {
-        console.error(e);
         if(e.message.includes("device not found"))  console.warn("No camera device found");
         initSetting.NO_CAMERA_DEVICE = true;
         myDevices.CAMERA.deviceId = virtualCameraForBlackScreen.deviceId;
         myDevices.CAMERA.track = virtualCameraForBlackScreen.track;
         myDevices.CAMERA.name = virtualCameraForBlackScreen.label;
-        document.getElementById('buttonStopCamera').disabled = true;
         return;
     }
 }
@@ -176,7 +139,7 @@ async function initializeMicrophoneDevice(){
             let audioDevices = microphoneList ? microphoneList.getAudioTracks() : null;
         
             appendSelectList(audioDevices, null, SELECT_LIST.MICROPHONE);
-            onchangeMicrophoneSelectList(true);
+            onchangeCameraSelectList(true);
     
             return;
         }
@@ -185,7 +148,6 @@ async function initializeMicrophoneDevice(){
         let t = await navigator.mediaDevices.enumerateDevices();
         console.log(t);
         initSetting.NO_MICROPHONE_DEVICE = true;
-        document.getElementById('buttonStopMicrophone').disabled = true;
         return;
     }
 }
@@ -199,7 +161,6 @@ function connectToSession(){
 
     document.getElementById('section-media-devices').style.display = 'none';
     document.getElementById('buttonConnectToSession').style.display = 'none';
-    document.getElementById('buttonInitCameraOff').outerHTML = '';
     isMediaDialogShown = false;
     
     joinSession();
@@ -208,6 +169,29 @@ function connectToSession(){
 /* Before connect */
 
 /* OPENVIDU METHODS */
+
+/*
+    Reason why camera doesn't appear
+    1. User are connecting with same id to both session; camera, screen.
+    2. When user connected, if screen entered first, then there is nothing to stream. Because screen is streaming nothing.
+        3. So, must join camera first, and then, let screen connect.
+        3. Or, use different id between camera and screen.
+
+    --> OK !
+
+    * Current Issue
+    User can join without camera, But nobody can subscribe him.
+    User without media devices, cannot subscribe.
+
+    * Functional Requirements
+    - Device Change such camera (OK) / Microphone (OK)
+    - Turn off my Camera(Sometimes not) / Microphone (OK)
+    - Speaker Mode
+    - Recording (Server OK. Only Front Need to be Updated)
+        - Recording must stop when session is empty ===> Already implemented in OpenVidu Server (OK)
+        - If new user accessed, they must know whether the session is on recording or not
+        - 
+*/
 
 function joinSession() {
 
@@ -233,16 +217,13 @@ function joinSession() {
         console.log("stream created::", event);
 		if (event.stream.typeOfVideo == "CAMERA" || event.stream.typeOfVideo == 'CUSTOM') {
 			// Subscribe to the Stream to receive it. HTML video will be appended to element with 'container-cameras' id
-            let cameraHolder = createHTMLElement('div', ['one-video']);
-            let cameraHolderWrapper = document.getElementById('camera-holder');
-            cameraHolderWrapper.append(cameraHolder);
-
-			var subscriber = sessionCamera.subscribe(event.stream, cameraHolder);
+			var subscriber = sessionCamera.subscribe(event.stream, 'container-cameras');
+            console.log('subscribe stream:', event.stream);
+            console.log("subscriber: ", subscriber);
 			// When the HTML video has been appended to DOM...
 			subscriber.on('videoElementCreated', event => {
 				// Add a new <p> element for the user's nickname just below its video
 				appendUserData(event.element, subscriber.stream.connection);
-                cameraHolder.id = `parent-${subscriber.stream.connection.connectionId}`;
 			});
 		}
 	});
@@ -302,10 +283,6 @@ function joinSession() {
 				// --- 6) Get your own camera stream with the desired properties ---
                 var publisher = null;
                 
-                let cameraHolder = createHTMLElement('div', ['one-video']);
-                let cameraHolderWrapper = document.getElementById('camera-holder');
-                cameraHolderWrapper.append(cameraHolder);
-
                 if(initSetting.NO_CAMERA_DEVICE || initSetting.NO_MICROPHONE_DEVICE){
                     console.log(initSetting.NO_CAMERA_DEVICE, initSetting.NO_MICROPHONE_DEVICE);
 
@@ -319,11 +296,11 @@ function joinSession() {
 
                     console.log(constraint);
 
-                    publisher = OVCamera.initPublisher(cameraHolder, constraint);
+                    publisher = OVCamera.initPublisher('container-cameras', constraint);
                     console.log(publisher);
                 } else {
                     console.log("User have camera");
-                    publisher = OVCamera.initPublisher(cameraHolder, {
+                    publisher = OVCamera.initPublisher('container-cameras', {
                         audioSource: undefined, // The source of audio. If undefined default microphone
                         videoSource: myDevices.CAMERA.track ? myDevices.CAMERA.track : undefined, // The source of video. If undefined default webcam
                         publishAudio: initSetting.MICROPHONE,  	// Whether you want to start publishing with your audio unmuted or not
@@ -503,6 +480,7 @@ function appendUserData(videoElement, connection) {
 		nodeId = connection;
 	} else {
         //"{\"clientData\":\"Participant83\"}%/%{\"openviduCustomConnectionId\":\"Participant83\"}"
+        
         let connectionData = connection.data.split("%/%");
         for(let i = 0; i < connectionData.length; i++){
             if(!connectionData[i].includes("clientData"))   continue;
@@ -513,6 +491,7 @@ function appendUserData(videoElement, connection) {
                 break;
             }
         }
+        console.log("userData:: ", userData);
 //		userData = JSON.parse(connection.data).clientData;
 		nodeId = connection.connectionId;
 	}
@@ -526,14 +505,9 @@ function appendUserData(videoElement, connection) {
 
 function removeUserData(connection) {
 	var dataNodeToRemove = document.getElementById("data-" + connection.connectionId);
-    var parentNodeToRemove = document.getElementById(`parent-${connection.connectionId}`);
 	if (dataNodeToRemove) {
 		dataNodeToRemove.parentNode.removeChild(dataNodeToRemove);
 	}
-    
-    if(parentNodeToRemove){
-        parentNodeToRemove.remove();
-    }
 }
 
 function removeAllUserData() {
@@ -745,20 +719,19 @@ async function setCameraDeviceList(){
 async function onchangeCameraSelectList(){
 	let deviceSelect = document.getElementById('camera-select-list');
 
-    if(!deviceSelect || !deviceSelect.options || !deviceSelect.options[deviceSelect.selectedIndex])    return;
-    
+    if(!deviceSelect || !deviceSelect.options || !deviceSelect.selectedIndex || !deviceSelect.options[deviceSelect.selectedIndex])    return;
+    console.log(deviceSelect, deviceSelect.options, deviceSelect.selectedIndex)
 	let selectValue = deviceSelect.options[deviceSelect.selectedIndex].value;
 	
 	let cameraList = await navigator.mediaDevices.enumerateDevices();//
-    
 	cameraList = cameraList.filter(device => device.kind === 'videoinput' && device.label === selectValue);
-    
+
 	if(!cameraList || cameraList.length < 1){
 		alert(`Cannot find camera device with name[${selectValue}]. Please check the device's status.`);
 		return;
 	}
-    
 	let previewer = document.getElementById('camera-preview');
+
 
 	newCameraDevice.deviceId = cameraList[0].deviceId;
 	newCameraDevice.name = cameraList[0].label;
@@ -911,7 +884,10 @@ function appendSelectList(list, currentDevice, type){
 
 	parent.innerHTML = '';
 
-    
+    if(currentDevice == null){
+        currentDevice = list[0].label;
+    }
+
 	list.forEach((device, index) => {
 		let name = device.label;
 		let deviceId = device.deviceId;
@@ -920,6 +896,8 @@ function appendSelectList(list, currentDevice, type){
 		option.innerText = name;
 		if(name === currentDevice) {
 			option.selected = true;
+			console.log(myDevices, type);
+			console.log(myDevices[type]);
 			myDevices[type].name = name;
 			myDevices[type].deviceId = deviceId;
 		}
@@ -1022,14 +1000,17 @@ function httpRequest(method, url, body, errorMsg, callback) {
 let recordingPrefix = ``;
 
 function startRecording() {
+	var outputMode = $('input[name=outputMode]:checked').val();
+	var hasAudio = $('#has-audio-checkbox').prop('checked');
+	var hasVideo = $('#has-video-checkbox').prop('checked');
     console.log(sessionCamera.sessionId);
 	httpRequest(
 		'POST',
         `${recordingPrefix}/recordings/start`, {
 			sessionId: sessionCamera.sessionId,
-			outputMode: "COMPOSED",
-			hasAudio: true,
-			hasVideo: true
+			outputMode: outputMode,
+			hasAudio: hasAudio,
+			hasVideo: hasVideo
 		},
 		'Start recording WRONG',
 		res => {

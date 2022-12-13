@@ -1,0 +1,219 @@
+<html>
+
+<head>
+	<title>Openvidu HTML</title>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1" charset="utf-8">
+	<link rel="shortcut icon" href="resources/images/favicon.ico" type="image/x-icon">
+
+	<!-- Bootstrap -->
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<!-- Bootstrap -->
+
+	<link rel="stylesheet" href="/resource/css/style.css" type="text/css" media="screen">
+	<script src="/resource/js/openvidu-browser-2.24.0.js"></script>
+	<script src="/resource/js/app.js"></script>
+    <script src="/resource/js/recording.js"></script>
+    <script>
+		$(document).ready(function () {
+			$('[data-toggle="tooltip"]').tooltip({
+				html: true
+			});
+		});
+	</script>
+</head>
+
+<body>
+
+	<nav class="navbar navbar-default">
+		<div class="container">
+			<div class="navbar-header">
+				<a class="navbar-brand" href="/">
+                    <!--
+                    <img class="demo-logo" src="resources/images/openvidu_vert_white_bg_trans_cropped.png"/>
+                    -->
+                    OpenVidu HTML Version by dev-whoan
+                </a>
+			</div>
+		</div>
+	</nav>
+
+	<div id="main-container" class="container">
+		<div id="join">
+			<div id="join-dialog" class="jumbotron vertical-center">
+				<h1>Join a video session</h1>
+				<form class="form-group" onsubmit="preapare(); /* joinSession(); */ return false">
+					<p>
+						<label>Participant</label>
+						<input class="form-control" type="text" id="userName" required>
+					</p>
+					<p>
+						<label>Session</label>
+						<input class="form-control" type="text" id="sessionId" required>
+					</p>
+					<p class="text-center">
+						<input class="btn btn-lg btn-success" type="submit" name="commit" value="Join!">
+					</p>
+				</form>
+			</div>
+		</div>
+
+		<div id="session" style="display: none;">
+			<div id="session-header">
+				<h1 id="session-title"></h1>
+			</div>
+			<div id="session-menu">
+				<input class="btn btn-large btn-danger" type="button" id="buttonLeaveSession" onmouseup="leaveSession()" value="Leave">
+				<input class="btn btn-large" type="button" id="buttonScreenShare" onmouseup="publishScreenShare()" value="Share" style="display: none;">
+                <input class="btn btn-large" type="button" id="buttonStopScreenShare" onmouseup="unpublishScreenShare()" value="Stop" style="display: none;">
+				<!-- Change Media Device-->
+				<input class="btn btn-large" type="button" id="buttonShowMediaDeviceList" onmouseup="showMediaDevices()" value="Devices">
+				<!-- Change Media Device-->
+				<input class="btn btn-large" type="button" id="buttonStopCamera" onmouseup="toggleCamera()" value="CamOff">
+				<input class="btn btn-large" type="button" id="buttonStopMicrophone" onmouseup="toggleMicrophone()" value="MicOff">
+			</div>
+			<div id="main-video" class="col-md-6"><p></p><video autoplay playsinline="true"></video></div>
+			<div class="col-md-6">
+				<div class="row panel panel-default">
+					<div class="panel-heading">User cameras</div>
+					<div class="panel-body" id="container-cameras" ></div>
+				</div>
+				<div class="row panel panel-default">
+					<div class="panel-heading">User Screens</div>
+					<div class="panel-body" id="container-screens" ></div>
+				</div>
+			</div>
+            <div id="recording-btns">
+				<div class="btns">
+					<input class="btn btn-md" type="button" id="buttonStartRecording" onmouseup="startRecording()" value="Start recording">
+				</div>
+				<div class="btns">
+					<input class="btn btn-md" type="button" id="buttonListRecording" onmouseup="listRecordings()" value="List recordings">
+					<div class="vertical-separator-bottom"></div>
+					<input class="btn btn-md" type="button" id="buttonGetRecording" onmouseup="getRecording()" value="Get recording"
+					 disabled>
+					<input class="btn btn-md" type="button" id="buttonStopRecording" onmouseup="stopRecording()" value="Stop recording"
+					 disabled>
+					<input class="btn btn-md" type="button" id="buttonDeleteRecording" onmouseup="deleteRecording()" value="Delete recording"
+					 disabled>
+					<input class="form-control" id="forceRecordingId" type="text" onkeyup="checkBtnsRecordings()">
+				</div>
+				<div class="textarea-container" id="textarea-http-container">
+					<button type="button" class="btn btn-outline-secondary" id="clear-http-btn" onclick="clearHttpTextarea()">Clear</button>
+					<span>HTTP responses</span>
+					<textarea id="textarea-http" readonly="true" class="form-control" name="textarea-http"></textarea>
+				</div>
+				<div class="textarea-container" id="textarea-events-container">
+					<button type="button" class="btn btn-outline-secondary" id="clear-events-btn" onclick="clearEventsTextarea()">Clear</button>
+					<span>OpenVidu events</span>
+					<textarea id="textarea-events" readonly="true" class="form-control" name="textarea-events"></textarea>
+				</div>
+			</div>
+		</div>
+	</div>
+
+<style>
+#section-media-devices {
+	display: none;
+	position: fixed;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 2;
+	padding: 5px;
+	max-width: 600px;
+	width: 80%;
+	height: 75%;
+	overflow-y: scroll;
+	border: 1px solid black;
+	background-color: white;
+}
+
+#section-media-devices #camera-wrapper,
+#section-media-devices #speaker-wrapper,
+#section-media-devices #microphone-wrapper{
+	border: 1px solid green;
+}
+
+#camera-preview{
+	width: 350px;	/* cam: 320px */
+	height: 260px;	/* cam: 260px */
+}
+
+#section-media-devices #section-control{
+	overflow: hidden;
+	position: relative;
+}
+#section-media-devices #buttonCloseMediaDevices{
+	float: right;
+}
+</style>
+
+	<div id="section-media-devices">
+		<div id="section-control">
+            <input class="btn btn-large" style="float: right; margin-left: 25px;" type="button" id="buttonConnectToSession" onmouseup="connectToSession()" value="Join">
+			<input class="btn btn-large btn-danger" type="button" id="buttonCloseMediaDevices" onmouseup="showMediaDevices()" value="Close">
+		</div>
+		<div id="camera-wrapper" class="section-media-device-wrapper">
+			<div id="camera-label" class="section-media-device-label">
+				<p>Camera</p>
+			</div>
+			<div id="camera-preview-wrapper">
+				<video id="camera-preview" autoplay="" muted="" playsinline></video>
+			</div>
+			<div id="camera-list" class="section-media-device-list">
+				<select id="camera-select-list" onchange="onchangeCameraSelectList(false)">
+					<!--
+					<option value="" selected></option>
+					-->
+				</select>
+			</div>
+            <input class="btn btn-large" type="button" id="buttonInitCameraOff" onmouseup="initCameraOff()" value="Off">
+			<input class="btn btn-large" type="button" id="buttonSetCamera" onmouseup="changeCameraDevice()" value="Change">
+		</div>
+        <!--
+		<div id="speaker-wrapper" class="section-media-device-wrapper">
+			<div id="speaker-label" class="section-media-device-label">
+				<p>Audio</p>
+			</div>
+			<div id="speaker-list" class="section-media-device-list">
+				<select id="speaker-select-list" onchange="onchangeSpeakerDevice()">
+					//!
+					<option value="" selected></option>
+					//!
+				</select>
+			</div>
+			<input class="btn btn-large" type="button" id="buttonSetAudio" onmouseup="changeAudioDevice()" value="Change">
+		</div>
+        -->
+		<div id="microphone-wrapper" class="section-media-device-wrapper">
+			<div id="microphone-label" class="section-media-device-label">
+				<p>Microphone</p>
+			</div>
+			<div id="microphone-list" class="section-media-device-list">
+				<select id="microphone-select-list" onchange="onchangeMicrophoneSelectList(false)">
+					<!--
+					<option value="" selected></option>
+					-->
+				</select>
+			</div>
+            <input class="btn btn-large" type="button" id="buttonInitMicOff" onmouseup="initMicrophoneOff()" value="Off">
+			<input class="btn btn-large" type="button" id="buttonSetMicrophone" onmouseup="changeMicrophoneDevice()" value="Change">
+		</div>
+	</div>
+<script>
+//	showMediaDevices();
+</script>
+
+	<footer class="footer">
+		<div class="container">
+			<div class="text-muted">OpenVidu HTML, Version 0.0.6</div>
+		</div>
+	</footer>
+
+</body>
+
+</html>
