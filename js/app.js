@@ -3,8 +3,10 @@ var OVScreen;
 var sessionCamera;
 var sessionScreen;
 
+var userList = [];
 var myUserName;
 var mySessionId;
+var sessionScreenOnline = false;
 var screensharing = false;
 var isMediaDialogShown = false;
 var connectedToSession = false;
@@ -19,6 +21,8 @@ var connectedToSession = false;
     
 
     * Functional Requirements
+    - More than 5 people, let main screen works
+    - If screen share on, let main screen works
     - Device Change such camera (OK) / Microphone (OK)
     - Turn off my Camera(Sometimes not) / Microphone (OK)
     - Speaker Mode']
@@ -220,6 +224,8 @@ function connectToSession(){
     document.getElementById('buttonConnectToSession').style.display = 'none';
     document.getElementById('buttonInitCameraOff').outerHTML = '';
     isMediaDialogShown = false;
+
+    document.getElementById('header').style.height = '0';
     
     joinSession();
 }
@@ -257,6 +263,10 @@ function joinSession() {
             cameraHolderWrapper.append(cameraHolder);
 
 			var subscriber = sessionCamera.subscribe(event.stream, cameraHolder);
+            
+            userList.push(subscriber);
+            console.log(`userList:`, userList);
+            toggleUserSection();
 			// When the HTML video has been appended to DOM...
 			subscriber.on('videoElementCreated', event => {
 				// Add a new <p> element for the user's nickname just below its video
@@ -270,11 +280,19 @@ function joinSession() {
     
     sessionScreen.on('streamCreated', event => {
 		if (event.stream.typeOfVideo == "SCREEN") {
+            sessionScreenOnline = true;
+            let screenHolder = createHTMLElement('div', ['one-video']);
+            let screenHolderWrapper = document.getElementById('screen-share-holder');
+            screenHolderWrapper.append(screenHolder);
 			// Subscribe to the Stream to receive it. HTML video will be appended to element with 'container-screens' id
-			var subscriberScreen = sessionScreen.subscribe(event.stream, 'container-screens');
+			var subscriberScreen = sessionScreen.subscribe(event.stream, screenHolder);
 			// When the HTML video has been appended to DOM...
 			subscriberScreen.on('videoElementCreated', event => {
 				// Add a new <p> element for the user's nickname just below its video
+                let mainVideo = $('#main-video video').get(0);
+                if (mainVideo.srcObject !== event.element.srcObject) {
+                    mainVideo.srcObject = event.element.srcObject;
+                }
 				appendUserData(event.element, subscriberScreen.stream.connection);
 			});
 		}
@@ -282,8 +300,15 @@ function joinSession() {
 
 	// On every Stream destroyed...
 	sessionCamera.on('streamDestroyed', event => {
-
 		// Delete the HTML element with the user's nickname. HTML videos are automatically removed from DOM
+        if(event.stream.typeOfVideo === 'SCREEN'){
+            sessionScreenOnline = false;   
+        }
+        userList = userList.filter( (subscribe) => subscribe.stream.streamId !== event.stream.streamId );
+        console.log(`userList:`, userList);
+        
+        toggleUserSection();
+
 		removeUserData(event.stream.connection);
 	});
 
@@ -360,6 +385,7 @@ function joinSession() {
 
 				// When our HTML video has been added to DOM...
 				publisher.on('videoElementCreated', function (event) {
+                    toggleUserSection();
 					initMainVideo(event.element, myUserName);
 					appendUserData(event.element, myUserName);
 					event.element['muted'] = true;
@@ -439,10 +465,26 @@ async function initializeMyDevices(){
 	}
 }
 
+function toggleScreenShare(){
+    if(screensharing){
+        unpublishScreenShare();
+        return;
+    }
+
+    if(sessionScreenOnline){
+        alert("이미 스크린 공유가 진행중 입니다.");
+        return;
+    }
+    publishScreenShare();
+}
+
 // --- 9) Function to be called when the 'Screen share' button is clicked
 function publishScreenShare() {
 	// --- 9.1) To create a publisherScreen set the property 'videoSource' to 'screen'
-	var publisherScreen = OVScreen.initPublisher("container-screens", { videoSource: "screen" });
+    let screenHolder = createHTMLElement('div', ['one-video']);
+    let screenHolderWrapper = document.getElementById('screen-share-holder');
+    screenHolderWrapper.append(screenHolder);
+	var publisherScreen = OVScreen.initPublisher(screenHolder, { videoSource: "screen" });
     myPublisher.screen = publisherScreen;
 
 	// --- 9.2) Publish the screen share stream only after the user grants permission to the browser
@@ -459,18 +501,30 @@ function publishScreenShare() {
 //            document.getElementById('buttonStopScreenShare').style.display = 'none';
             document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.on;
             screensharing = false;
+            sessionScreenOnline = false;
+
+            //scrollingCameraSection
         });
         sessionScreen.publish(publisherScreen);
+        toggleUserSection();
     });
 
     publisherScreen.on('videoElementCreated', function (event) {
+        let mainVideo = $('#main-video video').get(0);
+		if (mainVideo.srcObject !== event.element.srcObject) {
+            mainVideo.srcObject = event.element.srcObject;
+		}
         appendUserData(event.element, sessionScreen.connection);
         event.element['muted'] = true;
     });
 
     publisherScreen.once('accessDenied', (event) => {
-        console.log("화면 공유화 권한이 없습니다. 현재 실행중인 브라우저에 화면 공유 권한을 설정해 주세요.");
-        console.error('Screen Share: Access Denied');
+        if(event.message.includes("You can only screen share in desktop")){
+            alert("화면 공유 기능은 데스크톱 환경에서만 가능합니다. 지원 브라우저 목록: [크롬, 파이어 폭스, 오페라, 사파리 (13버전 이상), 에지, 일렉트론]");
+            console.error(event);
+            return;
+        }
+        console.error("Access Denied: 화면 공유화 권한이 없습니다. 현재 실행중인 브라우저에 화면 공유 권한을 설정해 주세요.");
     });
 }
 
@@ -583,6 +637,66 @@ function initMainVideo(videoElement, userData) {
 	document.querySelector('#main-video video').srcObject = videoElement.srcObject;
 	document.querySelector('#main-video p').innerHTML = userData;
 	document.querySelector('#main-video video')['muted'] = true;
+}
+
+/**
+ * 
+ * The methods below change use camera sections into grid or scroll.
+ * If more than 4 users are connected, will use scroll.
+ * If screen sharing is connected, will use scroll.
+ */
+
+async function toggleUserSection(){
+    let grid = true;
+    console.log(`toggleUserSection:: grid = `, grid);
+    //user count > 4 ? grid = true;
+    if(userList.length + 1 > 4){
+        grid = false;
+        console.log(`toggleUserSection:: scroll mode will be set. users are more than 5`);
+    } else if(screensharing || sessionScreenOnline){
+        grid = false;
+        console.log(`toggleUserSection:: scroll mode will be set. screen is sharing`);
+    }
+    console.log(`toggleUserSection:: grid = `, grid);
+
+    if(grid){
+        gridingCameraSection();
+        return;
+    }
+
+    scrollingCameraSection();
+}
+
+function gridingCameraSection(){
+    console.log("toggleUserSection:: griding...")
+    let target = document.getElementById('camera-holder');
+    let mainScreen = document.getElementById('main-video');
+    if(!target){
+        return;
+    }
+
+    if(target.classList.contains('camera-scroll-holder'))
+        target.classList.remove('camera-scroll-holder');
+    if(!target.classList.contains('camera-grid-holder'))
+        target.classList.add('camera-grid-holder');
+
+    mainScreen.style.display = 'none';
+}
+
+function scrollingCameraSection(){
+    console.log("toggleUserSection:: scrolling...")
+    let target = document.getElementById('camera-holder');
+    let mainScreen = document.getElementById('main-video');
+    if(!target){
+        return;
+    }
+    
+    if(target.classList.contains('camera-grid-holder'))
+        target.classList.remove('camera-grid-holder');
+    if(!target.classList.contains('camera-scroll-holder'))
+        target.classList.add('camera-scroll-holder');
+
+    mainScreen.style.display = 'block';
 }
 
 /**
@@ -975,6 +1089,23 @@ async function getToken(mySessionId, isScreen, userName) {
     let token = await createToken(mySessionId, isScreen, userName);
     return token;
 //	return createSession(mySessionId).then(sessionId => createToken(sessionId));
+}
+
+/*
+let sessionInfo = await getSessionInfo(mySessionId);
+let jsonSessionInfo = JSON.parse(sessionInfo.sessionInfo);
+console.log(jsonSessionInfo);
+*/
+function getSessionInfo(sessionId){
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            type: "GET",
+            url: `${APPLICATION_SERVER_URL}sessions?sessionId=${sessionId}`,
+            headers: { "Content-Type": "application/json"},
+            success: response => resolve(response),
+            error: (error) => reject(error)
+        });
+    })
 }
 
 function createSession(customSessionId, isScreen) {

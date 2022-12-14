@@ -3,6 +3,12 @@ html {
 	min-height: 100%;
 }
 
+#header{
+    height: 50px;
+    overflow: hidden;
+    transition: height 1s ease-in-out;
+}
+
 nav {
 	height: 50px;
 	width: 100%;
@@ -218,13 +224,25 @@ video {
 	height: 180px;
 }
 
-#session-menu{
-    width: 100%;
-    overflow: hidden;
+.record-start{
+    width: 34px;
     height: 34px;
-    margin-bottom: 20px;
-    flex-direction: row;
-    justify-content: space-between;
+    filter: drop-shadow(0 0 3px rgba(24,24,24,0.6));
+    background-image: linear-gradient(136deg, #ff0000 0%, #ff6969 100%);
+    border: 3px solid #ffffff;
+    border-radius: 30px;
+}
+
+.record-stop{
+    width: 34px;
+    height: 34px;
+    filter: drop-shadow(0 0 3px rgba(24,24,24,0.6));
+    background-image: linear-gradient(136deg, #ff0000 0%, #ff6969 100%);
+    border: 3px solid #ffffff;
+}
+
+#screen-share-holder{
+    display: none;
 }
 
 /* xs ans md screen resolutions*/
