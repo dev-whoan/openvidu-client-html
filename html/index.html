@@ -54,61 +54,6 @@
             return elem;
         }
     </script>
-</head>
-
-<body>
-
-    <div id="header">
-        <nav id="class="navbar navbar-default">
-            <div class="container">
-                <div class="navbar-header">
-                    <a class="navbar-brand" href="/">
-                        <!--
-                        <img class="demo-logo" src="resources/images/openvidu_vert_white_bg_trans_cropped.png"/>
-                        -->
-                        OpenVidu HTML Version By dev-whoan
-                    </a>
-                </div>
-            </div>
-        </nav>
-    </div>  
-
-    <div id="main-container" class="container">
-        <div id="join">
-            <div id="join-dialog" class="jumbotron vertical-center">
-                <h1>Join a video session</h1>
-                <form class="form-group" onsubmit="preapare(); /* joinSession(); */ return false">
-                    <p>
-                        <label>Participant</label>
-                        <input class="form-control" type="text" id="userName" required>
-                    </p>
-                    <p>
-                        <label>Session</label>
-                        <input class="form-control" type="text" id="sessionId" required>
-                    </p>
-                    <p class="text-center">
-                        <input class="btn btn-lg btn-success" type="submit" name="commit" value="Join!">
-                    </p>
-                </form>
-            </div>
-        </div>
-
-        <div id="session" style="display: none;">
-            <div id="session-header">
-                <h1 id="session-title"></h1>
-            </div>
-			<div id="session-menu">
-                <div id="session-menu-button-wrapper">
-                    <!--
-                    <div id="buttonRecord" class="record-start"></div>
-                    -->
-                    <img class="setting-icon" id="buttonLeaveSession" onmouseup="leaveSession()" src="/resource/img/toolbar/call_end.png" />
-                    <img class="setting-icon" id="buttonScreenShare" onmouseup="toggleScreenShare()" src="/resource/img/toolbar/screen_share_on.png" />
-                    <img class="setting-icon" id="buttonShowMediaDeviceList" onmouseup="showMediaDevices()" src="/resource/img/toolbar/setting.png" />
-                    <img class="setting-icon" id="buttonStopCamera" onmouseup="toggleCamera()" src="/resource/img/toolbar/camera_on.png" />
-                    <img class="setting-icon" id="buttonStopMicrophone" onmouseup="toggleMicrophone()" src="/resource/img/toolbar/mic_on.png"/>
-                </div>
-			</div>
 <!-- Desktop -->
 <style>
 @media only screen and (min-width: 992px) {
@@ -521,11 +466,67 @@ iPhone 13 Pro Included here
 }
 </style>
 <!-- Medium Mobile ( under width 991px )-->
+</head>
+
+<body>
+
+    <div id="header">
+        <nav id="class="navbar navbar-default">
+            <div class="container">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="/">
+                        <!--
+                        <img class="demo-logo" src="resources/images/openvidu_vert_white_bg_trans_cropped.png"/>
+                        -->
+                        OpenVidu HTML Version By dev-whoan
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </div>  
+
+    <div id="main-container" class="container">
+        <div id="join">
+            <div id="join-dialog" class="jumbotron vertical-center">
+                <h1>Join a video session</h1>
+                <form class="form-group" onsubmit="preapare(); /* joinSession(); */ return false">
+                    <p>
+                        <label>Participant</label>
+                        <input class="form-control" type="text" id="userName" required>
+                    </p>
+                    <p>
+                        <label>Session</label>
+                        <input class="form-control" type="text" id="sessionId" required>
+                    </p>
+                    <p class="text-center">
+                        <input class="btn btn-lg btn-success" type="submit" name="commit" value="Join!">
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <div id="session" style="display: none;">
+            <div id="session-header">
+                <h1 id="session-title"></h1>
+            </div>
+			<div id="session-menu">
+                <div id="session-menu-button-wrapper">
+                    <div id="buttonRecord" class="record-start" onmouseup="toggleRecord()"></div>
+                    <img class="setting-icon" id="buttonLeaveSession" onmouseup="leaveSession()" src="/resource/img/toolbar/call_end.png" />
+                    <img class="setting-icon" id="buttonShowMediaDeviceList" onmouseup="showMediaDevices()" src="/resource/img/toolbar/setting.png" />
+                    <img class="setting-icon" id="buttonScreenShare" onmouseup="toggleScreenShare()" src="/resource/img/toolbar/screen_share_on.png" />
+                    <img class="setting-icon" id="buttonStopCamera" onmouseup="toggleCamera()" src="/resource/img/toolbar/camera_on.png" />
+                    <img class="setting-icon" id="buttonStopMicrophone" onmouseup="toggleMicrophone()" src="/resource/img/toolbar/mic_on.png"/>
+                </div>
+			</div>
             <div id="video-row-holder">
                 <div class="camera-grid-holder" id="camera-holder"></div>
                 <div id="screen-share-holder"></div>
                 <div id="main-video" class="col-md-6">
                     <p></p><video autoplay playsinline="true"></video>
+                </div>
+                <div id="virtual-camera-holder">
+                    <video autoplay playsinline="true" id="virtual-camera"></video>
                 </div>
             </div>
 
@@ -653,7 +654,7 @@ iPhone 13 Pro Included here
 
     <footer class="footer">
         <div class="container">
-            <div class="text-muted">OpenVidu HTML by dev-whoan, Version 0.0.6</div>
+            <div class="text-muted">OpenVidu HTML by dev-whoan, Version 0.0.7</div>
         </div>
     </footer>
 

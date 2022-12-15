@@ -225,6 +225,7 @@ video {
 }
 
 .record-start{
+    cursor: pointer;
     width: 34px;
     height: 34px;
     filter: drop-shadow(0 0 3px rgba(24,24,24,0.6));
@@ -234,6 +235,7 @@ video {
 }
 
 .record-stop{
+    cursor: pointer;
     width: 34px;
     height: 34px;
     filter: drop-shadow(0 0 3px rgba(24,24,24,0.6));
@@ -242,6 +244,10 @@ video {
 }
 
 #screen-share-holder{
+    display: none;
+}
+
+#virtual-camera{
     display: none;
 }
 
