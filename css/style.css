@@ -251,6 +251,22 @@ video {
     display: none;
 }
 
+#camera-wrapper{
+    width: 100%;
+    height: 330px;
+}   
+
+#camera-wrapper #camera-preview-wrapper{
+    background-color: black;
+}
+
+#camera-wrapper #camera-preview-wrapper #camera-preview{
+    width: 350px;
+    height: 230px;
+    margin: 0 auto;
+    display: block;
+}
+
 /* xs ans md screen resolutions*/
 
 @media screen and (max-width: 991px) and (orientation: portrait) {

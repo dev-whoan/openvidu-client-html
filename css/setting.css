@@ -1,0 +1,37 @@
+#section-media-devices {
+    display: none;
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    padding: 5px;
+    max-width: 600px;
+    width: 80%;
+    height: 75%;
+    overflow-y: scroll;
+    border: 1px solid black;
+    background-color: white;
+}
+
+#section-media-devices #camera-wrapper,
+#section-media-devices #speaker-wrapper,
+#section-media-devices #microphone-wrapper {
+    border: 1px solid green;
+}
+
+#camera-preview {
+    width: 350px;
+    /* cam: 320px */
+    height: 260px;
+    /* cam: 260px */
+}
+
+#section-media-devices #section-control {
+    overflow: hidden;
+    position: relative;
+}
+
+#section-media-devices #buttonCloseMediaDevices {
+    float: right;
+}

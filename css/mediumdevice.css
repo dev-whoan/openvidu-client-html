@@ -1,0 +1,131 @@
+@media only screen and (min-width: 651px) and (max-width: 991px) {
+
+    #session-menu{
+        width: 620px;
+        padding: 15px 5px 0 5px;
+        margin: 0 auto;
+        background-color: #ccc;
+        overflow: hidden;
+        height: 56px;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    #session-menu #session-menu-button-wrapper{
+        width: 80%;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    #session-menu .setting-icon{
+        width: 34px !important;
+        height: 34px !important;
+        cursor: pointer;
+    }
+    
+    #session-header {
+        padding: 0 5px 0 5px;
+        width: 620px;
+        margin: 0 auto;
+    }
+    
+    #session-title{
+        display: inline-block;
+        margin-top: 0;
+        font-size: 20px;
+    }
+    
+    #video-row-holder {
+        overflow: hidden;
+        position: relative;
+        width: 620px;
+        height: 100%;
+        margin: 0 auto;
+        background-color: #ccc;
+    }
+    
+    #video-row-holder #camera-holder {
+        width: 100%;
+        height: 100%;
+    }
+    
+    #video-row-holder .camera-grid-holder {
+        display: grid;
+        grid-template-columns: 50% 50%;
+        grid-template-rows: 50% 50%;
+    }
+    
+    #video-row-holder .camera-scroll-holder {
+        height: 200px !important;
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: space-around;
+        overflow-x: scroll;
+    }
+    
+    #video-row-holder .camera-scroll-holder .one-video{
+            /* width: 200px !important;
+        height: 200px !important; */
+        flex: 0 0 30%;
+    }
+    
+    #video-row-holder #camera-holder {
+        width: 100%;
+        height: 100%;
+        padding: 5px;
+    
+        text-align: center;
+    }
+    
+    .container-camera-align-center {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    #camera-holder video {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        padding: 5px;
+        cursor: pointer;
+    }
+    
+    #camera-holder div {
+        position: relative;
+        width: 100%;
+        bottom: 5px;
+    }
+    
+    #camera-holder p {
+        display: inline-block;
+        background: #f8f8f8;
+        padding-left: 5px;
+        padding-right: 5px;
+        color: #777777;
+        font-weight: bold;
+        border-bottom-right-radius: 4px;
+    }
+    
+    #video-row-holder #main-video {
+        display: none;
+        position: absolute;
+        left: 0;
+        top: 200px;
+        width: 100%;
+        height: 400px;
+    }
+    
+    #video-row-holder #main-video video{
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        height: 100%;
+        background-color: black;
+    }
+        
+}
