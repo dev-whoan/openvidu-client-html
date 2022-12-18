@@ -1,4 +1,4 @@
-@media only screen and (max-width: 400px) {
+@media screen and (max-width: 400px) {
 
     #session-menu{
         width: 100%;
@@ -165,7 +165,7 @@
         cursor: pointer;
         width: 22px !important;
         height: 22px !important;
-        filter: drop-shadow(0 0 3px rgba(24,24,24,0.6));
+        filter: inherit !important;
         background-image: linear-gradient(136deg, #ff0000 0%, #ff6969 100%);
         border: 3px solid #ffffff;
     }

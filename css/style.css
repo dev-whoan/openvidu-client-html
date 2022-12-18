@@ -238,7 +238,7 @@ video {
     cursor: pointer;
     width: 34px;
     height: 34px;
-    filter: drop-shadow(0 0 3px rgba(24,24,24,0.6));
+    filter: inherit !important;
     background-image: linear-gradient(136deg, #ff0000 0%, #ff6969 100%);
     border: 3px solid #ffffff;
 }
@@ -289,15 +289,5 @@ video {
 	}
 	.navbar-header a.nav-icon {
 		padding: 7px 3px 7px 3px;
-	}
-}
-
-@media only screen and (max-height: 767px) and (orientation: landscape) {
-	#img-div {
-		margin-top: 1em;
-		margin-bottom: 1em;
-	}
-	#join-dialog {
-		max-width: inherit;
 	}
 }

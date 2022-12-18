@@ -22,6 +22,7 @@ const GRID_MAX_USER_COUNT = 4;
     - every player should be able to record. not only publisher.
 
     * Current Issue
+    - Joining with turning off the camera, cannot turn on the camera.
     
     * Functional Requirements
     - More than 5 people, let main screen works      (OK)
@@ -204,6 +205,23 @@ async function initializeVideoDevice(){
 
 async function initializeMicrophoneDevice(){
     try{
+        let devices = await navigator.mediaDevices.enumerateDevices();
+        devices = devices.filter(device => device.kind === 'audioinput');
+        
+        if(devices && devices.length > 0){
+            appendSelectList(devices, devices[0].label, SELECT_LIST.MICROPHONE);
+            onchangeMicrophoneSelectList(true);
+            myDevices.MICROPHONE.deviceId = devices[0].deviceId;
+            myDevices.MICROPHONE.name = devices[0].label;
+            
+            return;
+        }
+        console.warn("No Audio Input device found");
+        initSetting.NO_MICROPHONE_DEVICE = true;
+        
+        document.getElementById('buttonStopMicrophone').disabled = true;
+        return;
+        /*
         let microphoneList = await navigator.mediaDevices.getUserMedia({audio: true});//
         if(microphoneList && microphoneList.getAudioTracks() && microphoneList.getAudioTracks().length > 0){
             let audioDevices = microphoneList ? microphoneList.getAudioTracks() : null;
@@ -213,6 +231,7 @@ async function initializeMicrophoneDevice(){
     
             return;
         }
+        */
     } catch (e) {
         if(e.message.includes("device not found"))  console.warn("No audio input device found");
         let t = await navigator.mediaDevices.enumerateDevices();
@@ -224,13 +243,14 @@ async function initializeMicrophoneDevice(){
 
 function connectToSession(){
     if(!myDevices.CAMERA.track){
-        alert("Please set camera device first");
+        alert("먼저 카메라를 선택해 주세요.");
         return;
     }
 
     document.getElementById('section-media-devices').style.display = 'none';
     document.getElementById('buttonConnectToSession').style.display = 'none';
     document.getElementById('buttonInitCameraOff').outerHTML = '';
+    document.getElementById('buttonInitMicOff').outerHTML = '';
     isMediaDialogShown = false;
 
     document.getElementById('header').style.height = '0';
@@ -286,6 +306,7 @@ function joinSession() {
     // ------- 3.2) Handle subscribers of 'Screen' type
     
     sessionScreen.on('streamCreated', event => {
+        console.log('sessionScreen.streamCreated', event)
 		if (event.stream.typeOfVideo == "SCREEN") {
             sessionScreenOnline = true;
             let screenHolder = createHTMLElement('div', ['one-video']);
@@ -296,14 +317,28 @@ function joinSession() {
 			// When the HTML video has been appended to DOM...
 			subscriberScreen.on('videoElementCreated', event => {
 				// Add a new <p> element for the user's nickname just below its video
-                let mainVideo = $('#main-video video').get(0);
-                if (mainVideo.srcObject !== event.element.srcObject) {
-                    mainVideo.srcObject = event.element.srcObject;
-                }
-				appendUserData(event.element, subscriberScreen.stream.connection);
+                createSharedScreen(event);
 			});
+            toggleUserSection();
 		}
 	});
+
+    createSharedScreen = (event) => {
+        if(!event.element.srcObject){
+            setTimeout( () => {
+                createSharedScreen(event);
+            }, 300);
+            return;
+        }
+
+        let mainVideo = $('#main-video video').get(0);
+        console.log("=========screen created", event.element.srcObject);
+        if (mainVideo.srcObject !== event.element.srcObject) {
+            mainVideo.srcObject = event.element.srcObject;
+        }
+        appendUserData(event.element, subscriberScreen.stream.connection);
+        return;
+    }
 
 	// On every Stream destroyed...
 	sessionCamera.on('streamDestroyed', event => {
@@ -391,7 +426,7 @@ function joinSession() {
 				// When our HTML video has been added to DOM...
 				publisher.on('videoElementCreated', function (event) {
                     toggleUserSection();
-					initMainVideo(event.element, myUserName);
+//					initMainVideo(event.element, myUserName);
 					appendUserData(event.element, myUserName);
 					event.element['muted'] = true;
 				});
