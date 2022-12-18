@@ -9,6 +9,27 @@ Openvidu Client HTML Version
 ```
 ~$ cd openvidu
 ~$ sudo ./openvidu stop
+~$ vi .env
+
+...
+# Add below properties
+
+# value: true | false
+OPENVIDU_AUTO_RECORDING=false
+
+# URI for main page of openvidu-call-html.
+MEETING_HOME=/meeting
+
+# JsonWebToken for external plugins on your server...
+# Such that MSA, you can add another server, such that web server,
+# and to communicate, original OpenVidu uses cookies,
+# So to authorize your account, you can use just JWT.
+# openvidu-call-back of mine only provides verifying the jwt.
+# The jwt must include timestamp which is unixtime type.
+# secret for JWT
+JWT_SECRET=MY_JWT_SECRET
+# lifetime of JWT.
+JWT_LIFETIME=600
 
 ~$ vi docker-compose.override.yml
 
@@ -54,6 +75,8 @@ services:
             - CALL_RECORDING=${CALL_RECORDING:-}
             - CALL_AUTO_RECORDING=${OPENVIDU_AUTO_RECORDING:-}
             - MEETING_HOME=${MEETING_HOME:-}
+            - JWT_SECRET=${JWT_SECRET:-}
+            - JWT_LIFETIME=${JWT_LIFETIME:-}
         logging:
             options:
                 max-size: "${DOCKER_LOGS_MAX_SIZE:-100M}"
