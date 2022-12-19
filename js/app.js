@@ -14,6 +14,11 @@ var connectedToSession = false;
 var isRecording = false;
 var forceRecordingId = false;
 
+const VIDEO_STREAMING_RESOLUTION = {
+    width: 640,
+    height: 480
+}
+
 const GRID_MAX_USER_COUNT = 4;
 
 /*
@@ -25,10 +30,7 @@ const GRID_MAX_USER_COUNT = 4;
     - Joining with turning off the camera, cannot turn on the camera.
     
     * Functional Requirements
-    - More than 5 people, let main screen works      (OK)
-    - If screen share on, let main screen works      (OK)
-    - Device Change such camera (OK) / Microphone    (OK)
-    - Turn off my Camera(Sometimes not) / Microphone (OK)
+    
 */
 
 var TOOLBAR_ICON = {
@@ -58,12 +60,18 @@ var myPublisher = {
 }
 
 const myDevices = {
+    IS_MOBILE: isMobileDevice(),
+    VIDEO_ELEMENT: {
+        element: null,
+        show: false,
+    },
 	CAMERA: {
 		name: null,
 		deviceId: null,
 		track: null,
 		stopped: false,
 		forceStopped: false,
+        hasChanged: false,
 	},
 	AUDIO: {
 		name: null,
@@ -106,6 +114,7 @@ const virtualCameraForBlackScreen = {
     deviceId: null,
     track: null,
     label: null,
+    loop: null,
 };
 /* Before connect */
 
@@ -113,21 +122,17 @@ function preapare(){
 	document.getElementById('section-media-devices').style.display = 'block';
 	isMediaDialogShown = true;
 
-    /* camera list */
     createVirtualCamera();
     initializeVideoDevice();
     initializeMicrophoneDevice();
-    
-    /* camera list */
-
-/*    
-    setCameraDeviceList(true);
-	setMicrophoneDeviceList(true);
-*/
-//	setMyCameraTrack(true);
 }
 
 function createVirtualCamera(){
+    if(virtualCameraForBlackScreen.loop){
+        clearTimeout(virtualCameraForBlackScreen.loop);
+        virtualCameraForBlackScreen.loop = null;
+    }
+
     let vCam = createEmptyMediaStream();
     vCam.getVideoTracks()[0].label = 'Virtual Camera';
 
@@ -165,7 +170,7 @@ async function initializeVideoDevice(){
     try{
         let devices = await navigator.mediaDevices.enumerateDevices();
         devices = devices.filter(device => device.kind === 'videoinput');
-        
+
         if(devices && devices.length > 0){
             appendSelectList(devices, devices[0].label, SELECT_LIST.CAMERA);
             onchangeCameraSelectList(true);
@@ -221,17 +226,6 @@ async function initializeMicrophoneDevice(){
         
         document.getElementById('buttonStopMicrophone').disabled = true;
         return;
-        /*
-        let microphoneList = await navigator.mediaDevices.getUserMedia({audio: true});//
-        if(microphoneList && microphoneList.getAudioTracks() && microphoneList.getAudioTracks().length > 0){
-            let audioDevices = microphoneList ? microphoneList.getAudioTracks() : null;
-        
-            appendSelectList(audioDevices, null, SELECT_LIST.MICROPHONE);
-            onchangeMicrophoneSelectList(true);
-    
-            return;
-        }
-        */
     } catch (e) {
         if(e.message.includes("device not found"))  console.warn("No audio input device found");
         let t = await navigator.mediaDevices.enumerateDevices();
@@ -415,7 +409,7 @@ function joinSession() {
                         videoSource: myDevices.CAMERA.track ? myDevices.CAMERA.track : undefined, // The source of video. If undefined default webcam
                         publishAudio: initSetting.MICROPHONE,  	// Whether you want to start publishing with your audio unmuted or not
                         publishVideo: true,  	// Whether you want to start publishing with your video enabled or not
-                        resolution: '640x480',  // The resolution of your video
+//                        resolution: '640x480',  // The resolution of your video
                         frameRate: 30,			// The frame rate of your video
                         insertMode: 'APPEND',	// How the video is inserted in the target element 'container-cameras'
                         mirror: false       	// Whether to mirror your local video or not
@@ -427,6 +421,13 @@ function joinSession() {
 				publisher.on('videoElementCreated', function (event) {
                     toggleUserSection();
 //					initMainVideo(event.element, myUserName);
+                    myDevices.VIDEO_ELEMENT.element = event.element;
+                    if(myDevices.VIDEO_ELEMENT.show){
+                        myDevices.VIDEO_ELEMENT.element.parentNode.style.display = 'block';
+                    } else {
+                        myDevices.VIDEO_ELEMENT.element.parentNode.style.display = 'none';
+                    }
+                    
 					appendUserData(event.element, myUserName);
 					event.element['muted'] = true;
 				});
@@ -527,20 +528,14 @@ function publishScreenShare() {
 
 	// --- 9.2) Publish the screen share stream only after the user grants permission to the browser
     publisherScreen.once('accessAllowed', (event) => {
-//        document.getElementById('buttonScreenShare').style.display = 'none';
-//        document.getElementById('buttonStopScreenShare').style.display = 'inline-block';
         document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.off;
         screensharing = true;
         // If the user closes the shared window or stops sharing it, unpublish the stream
         publisherScreen.stream.getMediaStream().getVideoTracks()[0].addEventListener('ended', () => {
             sessionScreen.unpublish(publisherScreen);
-//            document.getElementById('buttonScreenShare').style.display = 'block';
-//            document.getElementById('buttonStopScreenShare').style.display = 'none';
             document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.on;
             screensharing = false;
             sessionScreenOnline = false;
-
-            //scrollingCameraSection
         });
         sessionScreen.publish(publisherScreen);
         toggleUserSection();
@@ -567,10 +562,8 @@ function publishScreenShare() {
 
 function unpublishScreenShare(){
     if(!screensharing){ return; }
-    
+
     sessionScreen.unpublish(myPublisher.screen);
-//    document.getElementById('buttonScreenShare').style.display = 'block';
-//    document.getElementById('buttonStopScreenShare').style.display = 'none';
     document.getElementById('buttonScreenShare').src = TOOLBAR_ICON.screen.on;
     screensharing = false;
 }
@@ -659,6 +652,10 @@ function removeAllUserData() {
 function addClickListener(videoElement, userData) {
 	videoElement.addEventListener('click', function () {
         if(!document.getElementById('camera-holder').classList.contains('camera-scroll-holder')){
+            return;
+        }
+        if(screensharing || sessionScreenOnline){
+            alert('화면 공유 중에는 사용자를 크게볼 수 없습니다.');
             return;
         }
 		var mainVideo = $('#main-video video').get(0);
@@ -811,7 +808,15 @@ async function toggleCamera(force){
 	if(force){
 		try{
             createVirtualCamera();
-			let changed = await myPublisher.camera.replaceTrack(virtualCameraForBlackScreen.track);
+            let _oldTrack = myPublisher.camera.stream.mediaStream.id;
+            let _track = virtualCameraForBlackScreen.track;
+			let changed = await myPublisher.camera.replaceTrack(_track);
+            let _newTrack = myPublisher.camera.stream.mediaStream.id;
+
+            // Ensure that camera turned off
+            if(_oldTrack === _newTrack){
+                createEmptyVideoTrack({width: VIDEO_STREAMING_RESOLUTION.width, height: VIDEO_STREAMING_RESOLUTION.height});
+            }
 			return;
 		} catch (e) {
 			console.error(e);
@@ -827,7 +832,15 @@ async function toggleCamera(force){
 	if(!myDevices.CAMERA.stopped){
 		try{
             createVirtualCamera();
-			let changed = await myPublisher.camera.replaceTrack(virtualCameraForBlackScreen.track);
+            let _oldTrack = myPublisher.camera.stream.mediaStream.id;
+            let _track = virtualCameraForBlackScreen.track;
+			let changed = await myPublisher.camera.replaceTrack(_track);
+            let _newTrack = myPublisher.camera.stream.mediaStream.id;
+
+            // Ensure that camera turned off
+            if(_oldTrack === _newTrack){
+                createEmptyVideoTrack({width: VIDEO_STREAMING_RESOLUTION.width, height: VIDEO_STREAMING_RESOLUTION.height});
+            }
 			myDevices.CAMERA.stopped = true;
             document.getElementById('buttonStopCamera').src = TOOLBAR_ICON.camera.off;
 			return;
@@ -914,13 +927,6 @@ async function setCameraDeviceList(){
 		currentDevice = myDevices.CAMERA.name;
 	}
 	
-	/*
-	[
-		{kind: 'audioinput', deviceId: 'default', label: 'ㄱ기본값 - 마크(USB Microphone) (0c45:6340)'},
-		{kind: 'videoinput', deviceId: 'HASH_VALUE', label: 'WEbcam C170 (046d:082b)'},
-		...
-	]
-	*/
 	let devices = await new OpenVidu().getDevices();
 	let videoDevices = devices.filter(i => i.kind === 'videoinput');
 
@@ -975,6 +981,7 @@ async function changeCameraDevice(){
 
 	myDevices.CAMERA.deviceId = newCameraDevice.deviceId;
 	myDevices.CAMERA.name = newCameraDevice.name;
+    myDevices.CAMERA.hasChanged = true;
 
 	let mediaStream = await navigator.mediaDevices.getUserMedia({
 		video: {
@@ -1383,7 +1390,11 @@ function clearEventsTextarea() {
  */
 
 function createEmptyMediaStream(){
-	return new MediaStream([createEmptyAudioTrack(), createEmptyVideoTrack({width: 640, height: 480})]);
+	return new MediaStream([createEmptyAudioTrack(), createEmptyVideoTrack({
+            width: VIDEO_STREAMING_RESOLUTION.width,
+            eight: VIDEO_STREAMING_RESOLUTION.height
+        })
+    ]);
 }
 
 function createEmptyAudioTrack(){
@@ -1396,28 +1407,32 @@ function createEmptyAudioTrack(){
 }
 
 function createEmptyVideoTrack({width, height}){
-	const canvas = Object.assign(document.createElement('canvas'), { width, height });
+	const canvas = document.getElementById('virtual-camera-canvas');//Object.assign(document.createElement('canvas'), { width, height });
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = "#000000";
 	ctx.fillRect(0, 0, width, height);
 
-	const stream = canvas.captureStream(10);
+	const stream = canvas.captureStream();
 	const track = stream.getVideoTracks()[0];
     
     let video = document.getElementById('virtual-camera');
     video.srcObject = stream;
+    video.load();
+    
     video.removeEventListener('click', () => {});
     video.addEventListener('play', () => {
         var loop = () => {
             if (!video.paused && !video.ended) {
-                ctx.drawImage(video, 0, 0, 300, 170);
-                setTimeout(loop, 1000 / 10); // Drawing at 10 fps
+                ctx.drawImage(video, 0, 0, 640, 480);
+                virtualCameraForBlackScreen.loop = setTimeout(loop, 1000 / 10); // Drawing at 10 fps
             }
         };
         loop();
     });
 
-    video.play();
+    video.oncanplay = () => {
+        video.play();
+    }
 
 	return Object.assign(track, { enabled: true });
 }
