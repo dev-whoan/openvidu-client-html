@@ -84,3 +84,7 @@ services:
 ~$ sudo ./openvidu restart
 
 ```
+
+###
+#### 본 프로젝트를 통해 WebRTC 서비스를 구현할 때
+- openvidu-call-html 만 수정한 경우, 위에서 알려주는 대로 openvidu를 설치한 뒤, docker-compose-override.yml의 내용 중 Docker Volume Mount 부분의 내용을 수정하여 해당 경로를 Mount 시켜 주거나, 아니면 설치된 openvidu 폴더 내에 public 디렉토리를 생성하고, 그 아래에 css html js img를 만들고 해당하는 리소스를 넣으면 된다.
